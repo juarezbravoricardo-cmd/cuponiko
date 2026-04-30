@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Cuponiko",
+    "slug": "cuponiko",
+    "version": "1.0.0",
+    "scheme": "cuponiko",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiBaseUrl": "https://api.cuponiko.mx",
+      "stripePublishableKey": "pk_test_mock",
+      "googleWebClientId": "mock.apps.googleusercontent.com"
+    },
+    "ios": {
+      "bundleIdentifier": "mx.cuponiko.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "mx.cuponiko.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#F97316"
+      }
+    }
+  }
+}

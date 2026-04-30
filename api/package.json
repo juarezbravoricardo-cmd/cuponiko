@@ -1,0 +1,41 @@
+{
+  "name": "cuponiko-api",
+  "version": "1.0.0",
+  "description": "Cuponiko Backend API (Auth, Billing, Coupons, Loyalty, Ads, Admin, Public, Exports)",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test:phase1": "node tests/run-phase1.js",
+    "test:phase2": "node tests/run-phase2.js",
+    "test:phase3": "node tests/run-phase3.js",
+    "test:phase3.5": "node tests/run-phase3.5.js",
+    "test:all": "node tests/run-phase1.js && node tests/run-phase2.js && node tests/run-phase3.js && node tests/run-phase3.5.js"
+  },
+  "author": "Cuponiko",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.1",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "google-auth-library": "^10.6.2",
+    "helmet": "^8.1.0",
+    "jest": "^30.3.0",
+    "joi": "^18.1.2",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "multer": "^2.1.1",
+    "pg": "^8.20.0",
+    "pg-format": "^1.0.4",
+    "stripe": "^22.1.0",
+    "twilio": "^6.0.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2"
+  }
+}
