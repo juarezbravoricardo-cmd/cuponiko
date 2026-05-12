@@ -382,8 +382,10 @@ async function globalMetrics() {
   const redemptionRate = row.coupons_created > 0
     ? Number((row.coupons_redeemed / row.coupons_created).toFixed(4))
     : 0;
-  // MRR conservador: 199 MXN/mes × premium activos. (No exponemos IDs Stripe.)
-  const PREMIUM_PRICE_MXN = 199;
+  // MRR conservador: PREMIUM_PRICE_MXN/mes × premium activos. (No exponemos IDs Stripe.)
+  // Precio real del plan Premium: 399 MXN/mes. Se lee de env para no acoplar el monto al código
+  // y permitir overrides en QA/staging sin re-deploy. Fallback a 399 (fuente de verdad: Stripe price).
+  const PREMIUM_PRICE_MXN = parseInt(process.env.PREMIUM_PRICE_MXN, 10) || 399;
   const mrr = row.premium_active * PREMIUM_PRICE_MXN;
   return {
     total_users: row.total_users,
