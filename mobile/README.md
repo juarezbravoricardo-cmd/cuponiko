@@ -21,7 +21,7 @@ npm install
 
 Edita `app.json` → `expo.extra`:
 
-- `apiBaseUrl`: URL de tu backend (Railway). Default: `https://api.cuponiko.mx`
+- `apiBaseUrl`: URL de tu backend (Railway). Default: `https://api.cuponiko.com`
 - `stripePublishableKey`: clave pública de Stripe (test o live)
 - `googleWebClientId`: client ID web de Google OAuth
 

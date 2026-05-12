@@ -1,8 +1,9 @@
 /**
- * Dashboard del negocio — hub de navegación para la Fase 2.
+ * Dashboard del negocio — hub de navegación principal.
  *
- * Analogía: la trastienda de un comercio. Tres cajones: escanear, cupones
- * y el plan. Sin métricas (vendrán en Fase 4); la Fase 2 es operativa.
+ * Incluye accesos rápidos a las funciones avanzadas (notificaciones, exports,
+ * lealtad, anuncios) que el tab bar no expone para no superar el límite
+ * recomendado de 5 ítems en mobile.
  */
 
 import React from 'react';
@@ -13,9 +14,27 @@ import { Button } from '@/components/Button';
 import { useAuth } from '@/stores/authStore';
 import { colors, fontSize, radii, spacing } from '@/utils/theme';
 
+type Tile = {
+  title: string;
+  subtitle: string;
+  href: string;
+  variant: 'primary' | 'secondary' | 'muted';
+};
+
+const TILES: Tile[] = [
+  { title: 'Escanear QR de cupón', subtitle: 'Valida un cupón de un cliente.', href: '/(business)/scanner', variant: 'primary' },
+  { title: 'Mis cupones', subtitle: 'Crea, pausa o revisa tus promociones.', href: '/(business)/coupons', variant: 'muted' },
+  { title: 'Tarjetas de lealtad', subtitle: 'Programas de sellos y recompensas.', href: '/(business)/loyalty', variant: 'muted' },
+  { title: 'Asignar sello de lealtad', subtitle: 'Escanea el QR de lealtad del cliente.', href: '/(business)/loyalty/scanner', variant: 'primary' },
+  { title: 'Anuncios destacados', subtitle: 'Promociones pagadas en el mapa.', href: '/(business)/ads', variant: 'secondary' },
+  { title: 'Notificaciones', subtitle: 'Envía push segmentado a tus clientes.', href: '/(business)/notifications', variant: 'muted' },
+  { title: 'Exportar reportes (PDF)', subtitle: 'Cupones, lealtad y redenciones.', href: '/(business)/exports', variant: 'muted' },
+];
+
 export default function BusinessDashboard() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+
   return (
     <ScreenContainer>
       <View style={styles.hero}>
@@ -23,42 +42,43 @@ export default function BusinessDashboard() {
         <Text style={styles.sub}>¿Qué quieres hacer hoy?</Text>
       </View>
 
-      <Pressable
-        style={[styles.tile, { backgroundColor: colors.primary }]}
-        onPress={() => router.push('/(business)/scanner')}
-      >
-        <Text style={styles.tileTitle}>Escanear QR</Text>
-        <Text style={styles.tileSub}>Valida un cupón de un cliente.</Text>
-      </Pressable>
+      {TILES.map((t) => (
+        <Pressable
+          key={t.href}
+          style={[
+            styles.tile,
+            t.variant === 'primary' && { backgroundColor: colors.primary },
+            t.variant === 'secondary' && { backgroundColor: colors.secondary },
+            t.variant === 'muted' && styles.tileMuted,
+          ]}
+          onPress={() => router.push(t.href as never)}
+        >
+          <Text
+            style={[
+              styles.tileTitle,
+              t.variant === 'muted' && { color: colors.textPrimary },
+            ]}
+          >
+            {t.title}
+          </Text>
+          <Text
+            style={[
+              styles.tileSub,
+              t.variant === 'muted' && { color: colors.textMuted },
+            ]}
+          >
+            {t.subtitle}
+          </Text>
+        </Pressable>
+      ))}
 
-      <Pressable
-        style={[styles.tile, styles.tileAlt]}
-        onPress={() => router.push('/(business)/coupons')}
-      >
-        <Text style={[styles.tileTitle, { color: colors.textPrimary }]}>Mis cupones</Text>
-        <Text style={[styles.tileSub, { color: colors.textMuted }]}>
-          Crea, pausa o revisa tus promociones.
-        </Text>
-      </Pressable>
-
-      <Pressable
-        style={[styles.tile, styles.tileAlt]}
-        onPress={() => router.push('/(business)/coupons/new')}
-      >
-        <Text style={[styles.tileTitle, { color: colors.textPrimary }]}>Nuevo cupón</Text>
-        <Text style={[styles.tileSub, { color: colors.textMuted }]}>
-          Flujo rápido en 5 pasos.
-        </Text>
-      </Pressable>
-
-      <View style={{ height: spacing.xl }} />
+      <View style={{ height: spacing.lg }} />
 
       <Button
         title="Actualizar a Premium"
         variant="secondary"
         onPress={() => router.push('/(business)/upgrade')}
       />
-      <Button title="Cerrar sesión" variant="ghost" onPress={logout} />
     </ScreenContainer>
   );
 }
@@ -68,7 +88,7 @@ const styles = StyleSheet.create({
   title: { fontSize: fontSize.xxl, fontWeight: '800', color: colors.textPrimary },
   sub: { color: colors.textMuted },
   tile: { borderRadius: radii.lg, padding: spacing.lg, gap: spacing.xs },
-  tileAlt: { backgroundColor: colors.bgMuted },
-  tileTitle: { fontSize: fontSize.lg, fontWeight: '800', color: '#FFF' },
+  tileMuted: { backgroundColor: colors.bgMuted },
+  tileTitle: { fontSize: fontSize.lg, fontWeight: '800', color: '#FFFFFF' },
   tileSub: { color: '#FFFFFFCC' },
 });

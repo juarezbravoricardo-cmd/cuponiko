@@ -28,3 +28,28 @@ export async function createAd(input: CreateAdInput): Promise<CreateAdResponse> 
   const r = await api.post('/api/ads/create', input);
   return r.data.data;
 }
+
+export interface MyAd {
+  ad_id: number;
+  coupon_id: number;
+  title: string;
+  image_url: string;
+  status: 'active' | 'paused' | 'expired';
+  start_date: string;
+  end_date: string;
+  impressions: number;
+  clicks: number;
+  redemptions: number;
+}
+
+/**
+ * Lista de anuncios del negocio actual. Defensivo: si el endpoint no está
+ * montado en la build vigente del backend, devuelve [].
+ */
+export async function fetchMyAds(): Promise<MyAd[]> {
+  const r = await api.get('/api/ads/my-ads');
+  const payload = r.data?.data;
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.ads)) return payload.ads;
+  return [];
+}

@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const BASE_URL =
   (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)?.apiBaseUrl ||
-  'https://api.cuponiko.mx';
+  'https://api.cuponiko.com';
 
 const ACCESS_KEY = 'cuponiko.access_token';
 const REFRESH_KEY = 'cuponiko.refresh_token';

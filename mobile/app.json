@@ -12,7 +12,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiBaseUrl": "https://api.cuponiko.mx",
+      "apiBaseUrl": "https://api.cuponiko.com",
       "stripePublishableKey": "pk_test_mock",
       "googleWebClientId": "mock.apps.googleusercontent.com"
     },

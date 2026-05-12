@@ -87,3 +87,46 @@ export async function redeemReward(consumerLoyaltyId: number): Promise<RewardRes
   const r = await api.post('/api/loyalty/redeem-reward', { consumer_loyalty_id: consumerLoyaltyId });
   return r.data.data;
 }
+
+// ────────────────────────────────────────────────────────────
+// LYL-BIZ-01: GET /api/loyalty/cards — Lista del negocio actual
+// LYL-BIZ-02: POST /api/loyalty/create — Crear tarjeta de lealtad
+//   Nota: estos endpoints están descritos en el blueprint de Fase 3 pero
+//   pueden no estar montados todavía en algunas builds del backend.
+//   El frontend maneja 404 con empty state.
+// ────────────────────────────────────────────────────────────
+export interface BusinessLoyaltyCard {
+  id: number;
+  name: string;
+  reward_description: string;
+  stamps_required: number;
+  design_color: string;
+  icon: string;
+  is_active: boolean;
+  consumers_enrolled: number;
+  created_at: string;
+}
+
+export interface CreateLoyaltyCardInput {
+  name: string;
+  reward_description: string;
+  stamps_required: number;
+  design_color: string;
+  icon: string;
+}
+
+export async function fetchBusinessLoyaltyCards(): Promise<BusinessLoyaltyCard[]> {
+  const r = await api.get('/api/loyalty/cards');
+  // Soporta tanto { data: { cards } } como { data: [] } por compatibilidad.
+  const payload = r.data?.data;
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.cards)) return payload.cards;
+  return [];
+}
+
+export async function createLoyaltyCard(
+  input: CreateLoyaltyCardInput
+): Promise<{ loyalty_card_id: number; message: string }> {
+  const r = await api.post('/api/loyalty/create', input);
+  return r.data.data;
+}
