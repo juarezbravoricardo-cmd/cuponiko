@@ -461,12 +461,181 @@ async function myLoyaltyCards(consumerId) {
   }));
 }
 
+// ────────────────────────────────────────────────────────────
+// LYL-BIZ-01 — Listar tarjetas de lealtad del negocio autenticado
+// ────────────────────────────────────────────────────────────
+async function listBusinessCards(userId) {
+  // Resolver business_id desde users (jwtVerify solo deja id/role/email).
+  const bizRes = await query(
+    'SELECT id FROM businesses WHERE user_id = $1',
+    [userId]
+  );
+  if (bizRes.rowCount === 0) {
+    throw new AppError(404, 'BUSINESS_NOT_FOUND', 'Negocio no encontrado.');
+  }
+  const businessId = Number(bizRes.rows[0].id);
+
+  // LEFT JOIN con consumer_loyalty para contar inscritos sin perder tarjetas
+  // sin clientes. Se usa COALESCE en design_color/icon para tolerar columnas
+  // opcionales que pueden no estar en todas las migraciones desplegadas.
+  const r = await query(
+    `SELECT lc.id,
+            lc.name,
+            lc.reward_description,
+            lc.stamps_required,
+            COALESCE(lc.design_color, '#F97316')      AS design_color,
+            COALESCE(lc.icon, 'star')                  AS icon,
+            lc.is_active,
+            lc.created_at,
+            COUNT(cl.id)::int                          AS consumers_enrolled
+       FROM loyalty_cards lc
+  LEFT JOIN consumer_loyalty cl ON cl.loyalty_card_id = lc.id
+      WHERE lc.business_id = $1
+   GROUP BY lc.id
+   ORDER BY lc.created_at DESC
+      LIMIT 200`,
+    [businessId]
+  );
+
+  return r.rows.map((row) => ({
+    id: Number(row.id),
+    name: row.name,
+    reward_description: row.reward_description,
+    stamps_required: row.stamps_required,
+    design_color: row.design_color,
+    icon: row.icon,
+    is_active: row.is_active,
+    consumers_enrolled: row.consumers_enrolled,
+    created_at: row.created_at,
+  }));
+}
+
+// ────────────────────────────────────────────────────────────
+// LYL-BIZ-02 — Crear tarjeta de lealtad (business)
+// ────────────────────────────────────────────────────────────
+async function createBusinessLoyaltyCard(userId, body) {
+  const b = body || {};
+
+  // V1 — name presente, <=120 chars
+  const name = (b.name || '').toString().trim();
+  if (!name || name.length > 120) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'El nombre de la tarjeta es obligatorio.');
+  }
+
+  // V2 — reward_description presente, <=255
+  const rewardDescription = (b.reward_description || '').toString().trim();
+  if (!rewardDescription || rewardDescription.length > 255) {
+    throw new AppError(
+      400,
+      'VALIDATION_ERROR',
+      'La descripción de la recompensa es obligatoria.'
+    );
+  }
+
+  // V3 — stamps_required entero entre 2 y 30 (regla operativa Cuponiko)
+  const stampsRequired = Number(b.stamps_required);
+  if (
+    !Number.isInteger(stampsRequired) ||
+    stampsRequired < 2 ||
+    stampsRequired > 30
+  ) {
+    throw new AppError(
+      400,
+      'VALIDATION_ERROR',
+      'El número de sellos requeridos debe estar entre 2 y 30.'
+    );
+  }
+
+  // V4 — design_color hex #RRGGBB (default naranja Cuponiko)
+  const designColor =
+    typeof b.design_color === 'string' && /^#[0-9A-Fa-f]{6}$/.test(b.design_color)
+      ? b.design_color
+      : '#F97316';
+
+  // V5 — icon string corto (default 'star')
+  const icon =
+    typeof b.icon === 'string' && b.icon.trim().length > 0 && b.icon.length <= 32
+      ? b.icon.trim()
+      : 'star';
+
+  return withTransaction(async (client) => {
+    // V0 — negocio existe y está active. Rechazo idéntico al de cupones (CPN-01).
+    const bizRes = await client.query(
+      'SELECT id, status FROM businesses WHERE user_id = $1',
+      [userId]
+    );
+    if (bizRes.rowCount === 0) {
+      throw new AppError(404, 'BUSINESS_NOT_FOUND', 'Negocio no encontrado.');
+    }
+    if (bizRes.rows[0].status !== 'active') {
+      throw new AppError(403, 'BUSINESS_SUSPENDED', 'Tu negocio está suspendido.');
+    }
+    const businessId = Number(bizRes.rows[0].id);
+
+    // INSERT defensivo: si la tabla no tiene design_color/icon en la build
+    // vigente, el INSERT con esas columnas fallaría. Se usa to_regclass para
+    // detectar columnas opcionales antes de insertar.
+    const colRes = await client.query(
+      `SELECT column_name
+         FROM information_schema.columns
+        WHERE table_name = 'loyalty_cards'
+          AND column_name IN ('design_color', 'icon')`
+    );
+    const present = new Set(colRes.rows.map((r) => r.column_name));
+    const hasDesign = present.has('design_color');
+    const hasIcon = present.has('icon');
+
+    let insSql;
+    let insParams;
+    if (hasDesign && hasIcon) {
+      insSql = `INSERT INTO loyalty_cards
+          (business_id, name, reward_description, stamps_required, design_color, icon, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+        RETURNING id`;
+      insParams = [businessId, name, rewardDescription, stampsRequired, designColor, icon];
+    } else {
+      insSql = `INSERT INTO loyalty_cards
+          (business_id, name, reward_description, stamps_required, is_active)
+        VALUES ($1, $2, $3, $4, TRUE)
+        RETURNING id`;
+      insParams = [businessId, name, rewardDescription, stampsRequired];
+    }
+    const ins = await client.query(insSql, insParams);
+    const loyaltyCardId = Number(ins.rows[0].id);
+
+    // Log auxiliar (best-effort) para auditoría de cambios de catálogo.
+    try {
+      await client.query(
+        `INSERT INTO activity_logs (user_id, business_id, action, metadata)
+         VALUES ($1, $2, 'loyalty_card_created', $3::jsonb)`,
+        [
+          userId,
+          businessId,
+          JSON.stringify({
+            loyalty_card_id: loyaltyCardId,
+            stamps_required: stampsRequired,
+          }),
+        ]
+      );
+    } catch (err) {
+      logger.error('loyalty_card_log_failed', { message: err.message });
+    }
+
+    return {
+      loyalty_card_id: loyaltyCardId,
+      message: 'Tarjeta de lealtad creada.',
+    };
+  });
+}
+
 module.exports = {
   joinLoyalty,
   stampLoyalty,
   refreshLoyaltyQr,
   redeemReward,
   myLoyaltyCards,
+  listBusinessCards,
+  createBusinessLoyaltyCard,
   // helpers (export para tests)
   _makeShortCodeFromJti: makeShortCodeFromJti,
 };

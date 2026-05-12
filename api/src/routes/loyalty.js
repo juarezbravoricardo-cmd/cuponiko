@@ -56,6 +56,30 @@ router.get(
   })
 );
 
+// LYL-BIZ-01 — Listar tarjetas del negocio (business)
+// IMPORTANTE: rutas estáticas DEBEN ir antes de '/:card_id/refresh-qr'
+// para que '/cards' no sea capturado como :card_id.
+router.get(
+  '/cards',
+  jwtVerify,
+  requireRole('business'),
+  asyncHandler(async (req, res) => {
+    const cards = await loyalty.listBusinessCards(req.user.id);
+    res.status(200).json({ data: { cards } });
+  })
+);
+
+// LYL-BIZ-02 — Crear tarjeta de lealtad (business)
+router.post(
+  '/create',
+  jwtVerify,
+  requireRole('business'),
+  asyncHandler(async (req, res) => {
+    const r = await loyalty.createBusinessLoyaltyCard(req.user.id, req.body || {});
+    res.status(201).json({ data: r });
+  })
+);
+
 // LYL-03 — Renovar QR
 router.post(
   '/:card_id/refresh-qr',

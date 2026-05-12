@@ -14,7 +14,7 @@
  *  - AP-13: el cupón nace en estado 'active' (max una transición posterior).
  */
 
-const { withTransaction } = require('../config/db');
+const { query, withTransaction } = require('../config/db');
 const { AppError } = require('../utils/AppError');
 const {
   getBusinessByUserId,
@@ -185,8 +185,70 @@ async function createAd(userId, body) {
   });
 }
 
+// ────────────────────────────────────────────────────────────
+// AD-BIZ-01 — Listar anuncios del negocio autenticado
+// ────────────────────────────────────────────────────────────
+async function listBusinessAds(userId) {
+  const bizRes = await query(
+    'SELECT id FROM businesses WHERE user_id = $1',
+    [userId]
+  );
+  if (bizRes.rowCount === 0) {
+    throw new AppError(404, 'BUSINESS_NOT_FOUND', 'Negocio no encontrado.');
+  }
+  const businessId = Number(bizRes.rows[0].id);
+
+  // JOIN con coupons para título + uses_count (proxy de redenciones).
+  // No usamos coupon_instances.status='redeemed' porque es ad_exclusive y
+  // single_use — uses_count del cupón refleja exactamente las redenciones.
+  const r = await query(
+    `SELECT a.id          AS ad_id,
+            a.coupon_id,
+            a.image_url,
+            a.start_date,
+            a.end_date,
+            a.cost_type,
+            a.cost_value,
+            a.redemption_limit,
+            a.impressions,
+            a.clicks,
+            a.status,
+            a.created_at,
+            c.title,
+            c.discount_type,
+            c.discount_value,
+            c.uses_count                          AS redemptions
+       FROM anuncios_pagados a
+  LEFT JOIN coupons c ON c.id = a.coupon_id
+      WHERE a.business_id = $1
+   ORDER BY a.created_at DESC
+      LIMIT 200`,
+    [businessId]
+  );
+
+  return r.rows.map((row) => ({
+    ad_id: Number(row.ad_id),
+    coupon_id: row.coupon_id !== null ? Number(row.coupon_id) : null,
+    title: row.title || '',
+    image_url: row.image_url,
+    status: row.status,
+    start_date: row.start_date,
+    end_date: row.end_date,
+    cost_type: row.cost_type,
+    cost_value: Number(row.cost_value),
+    redemption_limit: row.redemption_limit,
+    impressions: row.impressions,
+    clicks: row.clicks,
+    redemptions: row.redemptions || 0,
+    discount_type: row.discount_type,
+    discount_value: row.discount_value !== null ? Number(row.discount_value) : null,
+    created_at: row.created_at,
+  }));
+}
+
 module.exports = {
   createAd,
+  listBusinessAds,
   // hook test-only
   _armFailAfterCouponInsert,
 };

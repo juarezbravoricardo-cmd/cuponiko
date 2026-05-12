@@ -21,6 +21,7 @@ const billingRoutes = require('./routes/billing');
 const couponsRoutes = require('./routes/coupons');
 const walletRoutes = require('./routes/wallet');
 const { businessesRouter, geoRouter, adsRouter } = require('./routes/home');
+const adsBusinessRoutes = require('./routes/ads');
 const loyaltyRoutes = require('./routes/loyalty');
 const { adminRouter, alertsRouter } = require('./routes/admin');
 const internalRoutes = require('./routes/internal');
@@ -93,6 +94,9 @@ function buildApp() {
   app.use('/api/wallet', walletRoutes);
   app.use('/api/businesses', businessesRouter);
   app.use('/api/geo', geoRouter);
+  // IMPORTANTE: el router business va PRIMERO para que `/create` y `/my-ads`
+  // (rutas estáticas) no sean capturados por `/:ad_id/click` del consumer.
+  app.use('/api/ads', adsBusinessRoutes);
   app.use('/api/ads', adsRouter);
 
   // Fase 3

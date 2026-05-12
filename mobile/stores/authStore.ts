@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { decode as atob } from 'base-64';
 import { api, tokenStore, extractApiError } from '@/services/api';
 
 export type Role = 'consumer' | 'business' | 'admin';
@@ -37,11 +38,13 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
     try {
       // Sin endpoint /me en Fase 1, parseamos el JWT (sub+role+email) a vuelo.
+      // React Native no expone `Buffer` global; usamos `base-64.atob` para
+      // mantener compatibilidad con builds nativos sin polyfills extra.
       const [, payloadB64] = t.split('.');
-      const payload = JSON.parse(
-        // base64url → base64
-        Buffer.from(payloadB64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
-      );
+      const normalized = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
+      // atob ya devuelve UTF-8 binario; JSON.parse no soporta bytes raw,
+      // pero los JWT de Cuponiko solo contienen ASCII en el payload.
+      const payload = JSON.parse(atob(normalized));
       set({
         user: {
           id: Number(payload.sub),
