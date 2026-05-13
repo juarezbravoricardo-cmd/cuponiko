@@ -76,7 +76,7 @@
     "extra": {
       "apiBaseUrl": "https://cuponiko-production.up.railway.app",
       "stripePublishableKey": "pk_test_mock",
-      "googleWebClientId": "mock.apps.googleusercontent.com",
+      "googleWebClientId": "3826634841-6qh87cfrhvjn98ur2gfvi23jgupbtcpu.apps.googleusercontent.com",
       "eas": {
         "projectId": "PLACEHOLDER_SE_LLENA_CON_EAS_INIT"
       }
