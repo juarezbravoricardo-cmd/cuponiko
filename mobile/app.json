@@ -37,7 +37,12 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "VIBRATE"
-      ]
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAGvhyv51t4zQNl8euR2NQSnfNR8aWdsho"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
