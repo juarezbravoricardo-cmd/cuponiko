@@ -30,7 +30,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useGeoLocation } from '@/hooks/useGeoLocation';
 import {
   fetchActiveAds,
@@ -159,7 +159,7 @@ export default function ConsumerHome() {
 
           <View style={styles.mapWrap}>
             {Platform.OS !== 'web' ? (
-              <MapView style={styles.map} initialRegion={initialRegion}>
+              <MapView provider={PROVIDER_GOOGLE} style={styles.map} initialRegion={initialRegion}>
                 {businesses.map((b) => (
                   <Marker
                     key={b.business_id}
