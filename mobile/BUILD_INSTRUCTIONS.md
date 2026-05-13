@@ -22,15 +22,36 @@ pnpm install
 
 1. `eas login` — usar tu cuenta de Expo (la del owner: Ricardo).
 2. `eas init` — vincula este directorio con un proyecto EAS y devuelve el `projectId`.
-3. Reemplaza el placeholder en `mobile/app.json`:
-   ```json
-   "extra": {
-     "eas": {
-       "projectId": "AQUI_VA_EL_ID_REAL"
-     }
-   }
+3. Guardar el `projectId` como secret EAS (no se commitea):
+   ```bash
+   eas secret:create --scope project --name EAS_PROJECT_ID --value "<projectId-real>" --type string
    ```
-4. Commit y push del `app.json` actualizado.
+   Para desarrollo local, agregarlo también a `mobile/.env` (ver `.env.example`).
+
+## Configuración de secretos en EAS (obligatorio antes del primer build)
+
+El proyecto migró de `app.json` a `app.config.ts`, que lee todos los valores sensibles desde variables de entorno. Crea los secrets una sola vez por proyecto:
+
+```bash
+cd mobile/
+
+eas secret:create --scope project --name GOOGLE_MAPS_API_KEY_ANDROID \
+  --value "<api-key-restringida-por-package+SHA1>" --type string
+
+eas secret:create --scope project --name GOOGLE_WEB_CLIENT_ID \
+  --value "<client-id>.apps.googleusercontent.com" --type string
+
+eas secret:create --scope project --name STRIPE_PUBLISHABLE_KEY \
+  --value "pk_live_xxx" --type string
+```
+
+Verificar con `eas secret:list`. Para sobreescribir: `eas secret:delete --name <NAME>` y volver a crear.
+
+> **Anti-patrón a evitar:** no pongas `pk_live_*` ni la API key de Maps en `eas.json` (que sí está en git). Solo `API_BASE_URL` (no es secreto) vive ahí, por profile.
+
+### Desarrollo local
+
+Copia `mobile/.env.example` a `mobile/.env` y llena los valores. Expo CLI lo carga automáticamente al ejecutar `expo start`. `.env` está en `.gitignore` y nunca se commitea.
 
 ## Build Android APK (preview / testing)
 
@@ -112,6 +133,7 @@ Nunca commitear:
 
 - Service account JSON de Google Play (`google-play-key.json`).
 - Credenciales de Apple Developer.
-- Keys reales de Stripe (las de `app.json` son mocks; las reales van en EAS Secrets).
+- Keys reales de Stripe (en `app.config.ts` se leen desde `STRIPE_PUBLISHABLE_KEY`; las reales van en EAS Secrets).
+- Contenido de `mobile/.env` (incluido en `.gitignore`).
 
-Usar `eas secret:create` para inyectar secrets al build sin que vivan en git.
+Usar `eas secret:create` para inyectar secrets al build sin que vivan en git. La lista canónica de variables vive en `mobile/.env.example`; cualquier nueva variable debe agregarse ahí + en `app.config.ts` + documentarse en esta sección.
