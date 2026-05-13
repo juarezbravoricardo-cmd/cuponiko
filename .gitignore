@@ -38,3 +38,11 @@ Thumbs.db
 # Misc
 *.tgz
 *.tar.gz
+
+# EAS / native builds
+mobile/android/
+mobile/ios/
+mobile/google-play-key.json
+mobile/AuthKey_*.p8
+*.keystore
+*.jks
