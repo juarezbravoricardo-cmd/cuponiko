@@ -72,7 +72,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     config: {
       googleMaps: {
-        apiKey: requireEnv('GOOGLE_MAPS_API_KEY_ANDROID'),
+        // TODO(seguridad): mover a EAS secret. Hardcode temporal para destrabar builds.
+        apiKey:
+          process.env.GOOGLE_MAPS_API_KEY_ANDROID ||
+          'AIzaSyAGvhyv51t4zQNl8euR2NQSnfNR8aWdsho',
       },
     },
   },
@@ -109,8 +112,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     apiBaseUrl: requireEnv('API_BASE_URL', 'https://api.cuponiko.com'),
-    stripePublishableKey: requireEnv('STRIPE_PUBLISHABLE_KEY'),
-    googleWebClientId: requireEnv('GOOGLE_WEB_CLIENT_ID'),
+    // TODO(seguridad): mover a EAS secret. Hardcode temporal para destrabar builds.
+    stripePublishableKey:
+      process.env.STRIPE_PUBLISHABLE_KEY ||
+      'pk_test_51TRaZrK0YwCm2rUr60n3YR9vjoV7C49vBdmVZqHwkrKEFiRpqiLZ8PyQqTC9PJXQWnINuiRcD7xWcsB9pnLuyUeB00jFXit3C4',
+    // TODO(seguridad): mover a EAS secret. Hardcode temporal para destrabar builds.
+    googleWebClientId:
+      process.env.GOOGLE_WEB_CLIENT_ID ||
+      '3826634841-6qh87cfrhvjn98ur2gfvi23jgupbtcpu.apps.googleusercontent.com',
     eas: {
       projectId: process.env.EAS_PROJECT_ID ?? 'PLACEHOLDER_SE_LLENA_CON_EAS_INIT',
     },
