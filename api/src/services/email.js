@@ -25,16 +25,11 @@ const _lastEmail = { to: null, subject: null, body: null, at: null };
 let _resendClient = null;
 function getResendClient() {
   if (_resendClient) return _resendClient;
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
+  if (!env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY no configurada y MOCK_EXTERNAL_SERVICES=false');
   }
-  _resendClient = new Resend(apiKey);
+  _resendClient = new Resend(env.RESEND_API_KEY);
   return _resendClient;
-}
-
-function getFromAddress() {
-  return process.env.RESEND_FROM || 'Cuponiko <no-reply@cuponiko.com>';
 }
 
 function getLastMockEmail() {
@@ -62,7 +57,7 @@ async function sendEmail(to, subject, body) {
   try {
     const resend = getResendClient();
     const { data, error } = await resend.emails.send({
-      from: getFromAddress(),
+      from: env.RESEND_FROM,
       to,
       subject,
       text: body,
