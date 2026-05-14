@@ -46,6 +46,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      ["./withGoogleMapsApiKey", { "apiKey": "AIzaSyAGvhyv51t4zQNl8euR2NQSnfNR8aWdsho" }],
       "expo-router",
       "expo-secure-store",
       [
