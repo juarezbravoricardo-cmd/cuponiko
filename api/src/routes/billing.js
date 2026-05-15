@@ -13,7 +13,10 @@ router.post(
   jwtVerify,
   requireRole('business'),
   asyncHandler(async (req, res) => {
-    const result = await billingService.createBusinessCheckoutSession({ userId: req.user.id });
+    const result = await billingService.createBusinessCheckoutSession({
+      userId: req.user.id,
+      billingInterval: req.body?.billing_interval,
+    });
     res.status(200).json({ data: result });
   })
 );

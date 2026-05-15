@@ -209,7 +209,7 @@ async function createCoupon(userId, body) {
     // 13: transferable ⇒ plan premium
     assertTransferableAllowed(biz.plan, transferable);
 
-    // 14: Plan free ⇒ máx 3 activos
+    // 14: Plan free ⇒ máx 1 activo
     await assertCanActivateMoreCoupons(client, biz.id, biz.plan);
 
     // INSERT
@@ -363,7 +363,7 @@ async function activateCoupon(userId, couponId) {
       throw new AppError(400, 'COUPON_EXPIRED', 'Este cupón ya venció y no puede reactivarse.');
     }
 
-    // 3: paused_by_downgrade + plan free ⇒ count < 3
+    // 3: paused_by_downgrade + plan free ⇒ count < 1
     if (c.status === 'paused_by_downgrade') {
       await assertCanReactivatePausedByDowngrade(client, c.business_id, c.plan);
     }

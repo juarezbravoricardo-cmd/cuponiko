@@ -34,7 +34,11 @@ const env = Object.freeze({
 
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
-  STRIPE_PRICE_PREMIUM: process.env.STRIPE_PRICE_PREMIUM,
+  // Pricing v2: dos Price objects bajo el mismo Product Cuponiko Premium.
+  // monthly   = $399 MXN/mes
+  // quarterly = $1,047 MXN/trimestre (Plan Mundialista)
+  STRIPE_PRICE_MONTHLY: process.env.STRIPE_PRICE_MONTHLY,
+  STRIPE_PRICE_QUARTERLY: process.env.STRIPE_PRICE_QUARTERLY,
   STRIPE_SUCCESS_URL: process.env.STRIPE_SUCCESS_URL,
   STRIPE_CANCEL_URL: process.env.STRIPE_CANCEL_URL,
 
@@ -64,6 +68,15 @@ if (env.NODE_ENV === 'production') {
   // Por ahora validamos Resend; Stripe/Twilio se validan al usarse en sus servicios.
   if (!env.MOCK_EXTERNAL_SERVICES && !env.RESEND_API_KEY) {
     throw new Error('ENV faltante en producción: RESEND_API_KEY (requerida cuando MOCK_EXTERNAL_SERVICES=false)');
+  }
+  // Pricing v2: ambos Price IDs son obligatorios cuando se usa Stripe real.
+  if (!env.MOCK_EXTERNAL_SERVICES) {
+    if (!env.STRIPE_PRICE_MONTHLY) {
+      throw new Error('ENV faltante en producción: STRIPE_PRICE_MONTHLY');
+    }
+    if (!env.STRIPE_PRICE_QUARTERLY) {
+      throw new Error('ENV faltante en producción: STRIPE_PRICE_QUARTERLY');
+    }
   }
 }
 

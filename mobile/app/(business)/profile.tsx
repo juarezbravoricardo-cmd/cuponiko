@@ -4,6 +4,13 @@
  * Mismo flujo que consumer/profile pero con toggle de push y eliminar cuenta.
  * Cuando el dueño elimina la cuenta, el backend cascadea: suspende el negocio
  * y caduca cupones, además de marcar al user inactivo.
+ *
+ * Pricing v2 (Cambios 6/7): muestra el plan activo con etiqueta diferenciada
+ * (Gratuito / Premium mensual / Mundialista trimestral) y solo expone el botón
+ * "Actualizar a Premium" cuando el plan actual es 'free'. Como hoy el store de
+ * auth no expone `plan` ni `billing_interval`, leemos esos campos con tipado
+ * laxo y fallback a 'free' — comportamiento seguro: si no hay dato, el botón
+ * permanece visible y el upgrade sigue siendo accesible.
  */
 
 import React, { useCallback, useState } from 'react';
@@ -21,10 +28,42 @@ import { colors, fontSize, radii, spacing } from '@/utils/theme';
 
 type DeleteStep = 'idle' | 'request' | 'confirm';
 
+type BusinessLikeUser = {
+  plan?: 'free' | 'premium';
+  billing_interval?: 'monthly' | 'quarterly';
+  subscription_current_period_end?: string | null;
+};
+
+function resolvePlanLabel(plan?: string, billingInterval?: string): string {
+  if (plan === 'premium') {
+    return billingInterval === 'quarterly'
+      ? 'Plan Mundialista (trimestral)'
+      : 'Plan Premium (mensual)';
+  }
+  // Default seguro: si el store aún no propaga plan, asumimos Gratuito.
+  return 'Plan Gratuito';
+}
+
+function formatRenewalDate(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
 export default function BusinessProfile() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const resetNotifications = useNotifications((s) => s.reset);
+
+  // El AuthUser tipado no incluye plan/billing_interval todavía. Leemos con cast
+  // laxo para no inventar features en el store. Si el JWT no los trae, el plan
+  // se resuelve a 'Plan Gratuito' por defecto.
+  const businessUser = (user as unknown as BusinessLikeUser | null) ?? null;
+  const currentPlan = businessUser?.plan ?? 'free';
+  const billingInterval = businessUser?.billing_interval;
+  const planLabel = resolvePlanLabel(currentPlan, billingInterval);
+  const nextRenewal = formatRenewalDate(businessUser?.subscription_current_period_end);
 
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
@@ -101,6 +140,8 @@ export default function BusinessProfile() {
         <ProfileRow label="Responsable" value={user?.full_name || '—'} />
         <ProfileRow label="Correo" value={user?.email || '—'} />
         <ProfileRow label="Tipo de cuenta" value="Negocio" />
+        <ProfileRow label="Plan actual" value={planLabel} />
+        {nextRenewal && <ProfileRow label="Próxima renovación" value={nextRenewal} />}
       </View>
 
       <View style={styles.card}>
@@ -122,11 +163,13 @@ export default function BusinessProfile() {
         {!!pushError && <Text style={styles.error}>{pushError}</Text>}
       </View>
 
-      <Button
-        title="Actualizar a Premium"
-        variant="secondary"
-        onPress={() => router.push('/(business)/upgrade')}
-      />
+      {currentPlan === 'free' && (
+        <Button
+          title="Actualizar a Premium"
+          variant="secondary"
+          onPress={() => router.push('/(business)/upgrade')}
+        />
+      )}
 
       <View style={[styles.card, { borderColor: colors.danger, borderWidth: 1 }]}>
         <Text style={styles.dangerTitle}>Zona peligrosa</Text>

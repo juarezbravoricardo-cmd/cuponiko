@@ -4,10 +4,10 @@
  * planChecker — helpers que se consumen desde los services antes de
  * ejecutar una acción que depende del plan del negocio (free vs premium).
  *
- * Analogía: el portero del evento. No deja entrar a más de 3 personas con
+ * Analogía: el portero del evento. No deja entrar a más de 1 persona con
  * boleto "Gratuito"; los de "VIP/Premium" pasan sin límite.
  *
- * - Fase Free: máximo 3 cupones `status = 'active'` simultáneamente.
+ * - Fase Free: máximo 1 cupón `status = 'active'` simultáneamente.
  * - Fase Premium: sin límite. Acceso a `transferable = true` y a anuncios.
  *
  * Estos asserts DEBEN correrse DENTRO de la transacción que luego inserta el
@@ -44,7 +44,7 @@ function assertBusinessActive(business) {
 }
 
 /**
- * Si el plan es free y el negocio ya tiene 3 o más cupones `active`, lanza 403.
+ * Si el plan es free y el negocio ya tiene 1 o más cupones `active`, lanza 403.
  * @param {import('pg').PoolClient | { query:Function }} client
  * @param {number} businessId
  * @param {'free'|'premium'} plan
@@ -55,11 +55,11 @@ async function assertCanActivateMoreCoupons(client, businessId, plan) {
     `SELECT COUNT(*)::int AS n FROM coupons WHERE business_id = $1 AND status = 'active'`,
     [businessId]
   );
-  if (r.rows[0].n >= 3) {
+  if (r.rows[0].n >= 1) {
     throw new AppError(
       403,
       'PLAN_LIMIT',
-      'Tu plan Gratuito permite máximo 3 cupones activos. Actualiza a Premium para crear más.'
+      'Tu plan Gratuito permite máximo 1 cupón activo. Actualiza a Premium para crear más.'
     );
   }
 }
@@ -74,11 +74,11 @@ async function assertCanReactivatePausedByDowngrade(client, businessId, plan) {
     `SELECT COUNT(*)::int AS n FROM coupons WHERE business_id = $1 AND status = 'active'`,
     [businessId]
   );
-  if (r.rows[0].n >= 3) {
+  if (r.rows[0].n >= 1) {
     throw new AppError(
       403,
       'PLAN_LIMIT',
-      'Ya tienes 3 cupones activos. Actualiza a Premium para reactivar más.'
+      'Ya tienes 1 cupón activo. Actualiza a Premium para reactivar más.'
     );
   }
 }

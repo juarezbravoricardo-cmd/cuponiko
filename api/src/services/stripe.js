@@ -12,11 +12,20 @@
  *
  * Esto permite escribir tests de BILL-02 (T-150/151/152/154) que envían el
  * body JSON directamente sin depender de Stripe real.
+ *
+ * Pricing v2: el price_id se selecciona desde el map `PRICE_IDS` según el
+ * `billingInterval` ('monthly' | 'quarterly'). Ambas variables ya están
+ * configuradas en Railway (STRIPE_PRICE_MONTHLY, STRIPE_PRICE_QUARTERLY).
  */
 
 const env = require('../config/env');
 const { AppError } = require('../utils/AppError');
 const logger = require('../utils/logger');
+
+const PRICE_IDS = {
+  monthly: process.env.STRIPE_PRICE_MONTHLY,
+  quarterly: process.env.STRIPE_PRICE_QUARTERLY,
+};
 
 let _stripeClient = null;
 function getClient() {
@@ -31,12 +40,19 @@ function getClient() {
 
 /**
  * Crea una sesión de checkout Stripe para subscripción Premium.
- * @param {{ businessId:number, email:string, customerId?:string }} args
+ * @param {{ businessId:number, email:string, customerId?:string, billingInterval:'monthly'|'quarterly' }} args
  * @returns {Promise<{ id:string, url:string, customer_id?:string }>}
  */
-async function createCheckoutSession({ businessId, email, customerId }) {
+async function createCheckoutSession({ businessId, email, customerId, billingInterval }) {
+  const priceId = PRICE_IDS[billingInterval];
+  if (!priceId && !env.MOCK_EXTERNAL_SERVICES) {
+    // Defensa profunda: la validación de billing_interval ocurre antes en BILL-01,
+    // pero si llega aquí sin price configurado, fallar explícito.
+    throw new AppError(500, 'STRIPE_PRICE_MISSING', 'Configuración de pricing incompleta.');
+  }
+
   if (env.MOCK_EXTERNAL_SERVICES) {
-    const id = `cs_test_mock_${businessId}_${Date.now()}`;
+    const id = `cs_test_mock_${billingInterval}_${businessId}_${Date.now()}`;
     return {
       id,
       url: `https://mock.checkout.cuponiko/${id}`,
@@ -47,14 +63,20 @@ async function createCheckoutSession({ businessId, email, customerId }) {
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     payment_method_types: ['card'],
-    line_items: [{ price: env.STRIPE_PRICE_PREMIUM, quantity: 1 }],
+    line_items: [{ price: priceId, quantity: 1 }],
     success_url: env.STRIPE_SUCCESS_URL,
     cancel_url: env.STRIPE_CANCEL_URL,
     customer: customerId || undefined,
     customer_email: customerId ? undefined : email,
-    metadata: { business_id: String(businessId) },
+    metadata: {
+      business_id: String(businessId),
+      billing_interval: billingInterval, // CRITICO: para que el webhook lo lea
+    },
     subscription_data: {
-      metadata: { business_id: String(businessId) },
+      metadata: {
+        business_id: String(businessId),
+        billing_interval: billingInterval,
+      },
     },
   });
   return {
@@ -97,4 +119,5 @@ function verifyWebhookSignature(rawBody, signature) {
 module.exports = {
   createCheckoutSession,
   verifyWebhookSignature,
+  PRICE_IDS,
 };

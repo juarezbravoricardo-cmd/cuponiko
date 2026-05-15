@@ -214,12 +214,10 @@ function extractError(res) {
 // TESTS
 // ────────────────────────────────────────────────────────────
 
-// T-200: Crear cupón exitoso (plan free)
+// T-200: Crear cupón exitoso (plan free) — Pricing v2: límite=1, sin cupones previos
 async function T200() {
   const { user: owner, business } = await createBusiness('t200');
-  // Crear 2 cupones previos directo
-  await createCouponDirect(business.id);
-  await createCouponDirect(business.id);
+  // Sin cupones previos: el primer cupón free debe poder crearse.
   const res = await agent()
     .post('/api/coupons')
     .set('Authorization', `Bearer ${owner.access_token}`)
@@ -236,10 +234,10 @@ async function T200() {
   if (!res.body?.data?.coupon_id) throw new Error('sin coupon_id');
 }
 
-// T-201 ⚡: Plan free con 3 activos → PLAN_LIMIT
+// T-201 ⚡: Plan free con 1 activo → PLAN_LIMIT (Pricing v2)
 async function T201() {
   const { user: owner, business } = await createBusiness('t201');
-  for (let i = 0; i < 3; i++) await createCouponDirect(business.id);
+  for (let i = 0; i < 1; i++) await createCouponDirect(business.id);
   const res = await agent()
     .post('/api/coupons')
     .set('Authorization', `Bearer ${owner.access_token}`)
@@ -253,11 +251,11 @@ async function T201() {
     });
   if (res.status !== 403) throw new Error(`esperaba 403, got ${res.status}`);
   if (res.body?.code !== 'PLAN_LIMIT') throw new Error(`code ${res.body?.code}`);
-  if (!/máximo 3 cupones activos/i.test(res.body?.error || ''))
+  if (!/máximo 1 cupón activo/i.test(res.body?.error || ''))
     throw new Error(`mensaje: ${res.body?.error}`);
-  // DB: no debe haber 4 cupones
+  // DB: no debe haber 2 cupones
   const c = await query(`SELECT COUNT(*)::int n FROM coupons WHERE business_id=$1`, [business.id]);
-  if (c.rows[0].n !== 3) throw new Error(`DB: hay ${c.rows[0].n} cupones, esperaba 3`);
+  if (c.rows[0].n !== 1) throw new Error(`DB: hay ${c.rows[0].n} cupones, esperaba 1`);
 }
 
 // T-202: Plan premium sin límite
@@ -910,18 +908,18 @@ async function T263() {
     throw new Error(`msg: ${r.body?.error}`);
 }
 
-// T-264: paused_by_downgrade → active (free con 3 activos)
+// T-264: paused_by_downgrade → active (free con 1 activo) (Pricing v2)
 async function T264() {
   const { user: owner, business } = await createBusiness('t264b');
-  // 3 activos + 1 paused_by_downgrade
-  for (let i = 0; i < 3; i++) await createCouponDirect(business.id, { status: 'active' });
+  // 1 activo + 1 paused_by_downgrade
+  for (let i = 0; i < 1; i++) await createCouponDirect(business.id, { status: 'active' });
   const frozen = await createCouponDirect(business.id, { status: 'paused_by_downgrade' });
   const r = await agent()
     .patch(`/api/coupons/${frozen.id}/activate`)
     .set('Authorization', `Bearer ${owner.access_token}`);
   if (r.status !== 403) throw new Error(`status ${r.status}`);
   if (r.body?.code !== 'PLAN_LIMIT') throw new Error(`code ${r.body?.code}`);
-  if (!/3 cupones activos/i.test(r.body?.error || ''))
+  if (!/1 cupón activo/i.test(r.body?.error || ''))
     throw new Error(`msg: ${r.body?.error}`);
 }
 

@@ -7,7 +7,8 @@
  *              INSERT ... ON CONFLICT DO NOTHING; rowCount=0 → 200 sin acción.
  *
  * Regla AP-12 (downgrade): pausar cupones en orden created_at DESC hasta dejar
- *              máximo 3 activos. Los pausados usan status='paused_by_downgrade'.
+ *              máximo 1 activo (límite del plan Gratuito v2). Los pausados
+ *              usan status='paused_by_downgrade'.
  *
  * Todo el procesamiento del webhook corre dentro de una transacción (AP-03).
  */
@@ -20,7 +21,14 @@ const logger = require('../utils/logger');
 // ─────────────────────────────────────────────────────────────
 // BILL-01
 // ─────────────────────────────────────────────────────────────
-async function createBusinessCheckoutSession({ userId }) {
+const VALID_BILLING_INTERVALS = ['monthly', 'quarterly'];
+
+async function createBusinessCheckoutSession({ userId, billingInterval }) {
+  // Pricing v2: el cliente debe enviar billing_interval ('monthly' o 'quarterly').
+  if (!VALID_BILLING_INTERVALS.includes(billingInterval)) {
+    throw new AppError(400, 'INVALID_INTERVAL', 'Intervalo de facturación no válido.');
+  }
+
   const res = await query(
     `SELECT b.id, b.plan, b.status, b.stripe_customer_id, u.email
        FROM businesses b
@@ -44,6 +52,7 @@ async function createBusinessCheckoutSession({ userId }) {
     businessId: b.id,
     email: b.email,
     customerId: b.stripe_customer_id || null,
+    billingInterval,
   });
 
   // Persistir stripe_customer_id si Stripe lo creó
@@ -113,6 +122,9 @@ async function handleCheckoutCompleted(event) {
   const businessId = Number(session.metadata?.business_id);
   const subscriptionId = session.subscription || null;
   const customerId = session.customer || null;
+  // Pricing v2: leer billing_interval del metadata; default 'monthly' si no viene (edge case).
+  const rawInterval = session.metadata?.billing_interval;
+  const billingInterval = rawInterval === 'quarterly' ? 'quarterly' : 'monthly';
 
   if (!businessId) {
     logger.warn('stripe_checkout_no_business_id', { session_id: session.id });
@@ -125,10 +137,11 @@ async function handleCheckoutCompleted(event) {
           SET plan = 'premium',
               subscription_status = 'active',
               stripe_subscription_id = COALESCE($2, stripe_subscription_id),
-              stripe_customer_id = COALESCE($3, stripe_customer_id)
+              stripe_customer_id = COALESCE($3, stripe_customer_id),
+              billing_interval = $4
         WHERE id = $1
         RETURNING id`,
-      [businessId, subscriptionId, customerId]
+      [businessId, subscriptionId, customerId, billingInterval]
     );
     if (upd.rowCount === 0) {
       throw new Error(`Negocio ${businessId} no encontrado para upgrade`);
@@ -179,7 +192,7 @@ async function handleSubscriptionDeleted(event) {
       [businessId]
     );
 
-    // Pausar cupones excedentes — orden created_at DESC, dejar máx 3
+    // Pausar cupones excedentes — orden created_at DESC, dejar máx 1 (plan Gratuito v2)
     const countRes = await client.query(
       `SELECT COUNT(*)::int AS n
          FROM coupons
@@ -187,8 +200,8 @@ async function handleSubscriptionDeleted(event) {
       [businessId]
     );
     const activeCount = countRes.rows[0].n;
-    if (activeCount > 3) {
-      const toPause = activeCount - 3;
+    if (activeCount > 1) {
+      const toPause = activeCount - 1;
       await client.query(
         `UPDATE coupons
             SET status = 'paused_by_downgrade'
@@ -205,7 +218,7 @@ async function handleSubscriptionDeleted(event) {
     await client.query(
       `INSERT INTO activity_logs (business_id, action, metadata)
        VALUES ($1, 'plan_downgraded', $2::jsonb)`,
-      [businessId, JSON.stringify({ stripe_event: event.id, paused: Math.max(0, activeCount - 3) })]
+      [businessId, JSON.stringify({ stripe_event: event.id, paused: Math.max(0, activeCount - 1) })]
     );
   });
 }

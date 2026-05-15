@@ -711,10 +711,12 @@ async function T152() {
     [[ids.A, ids.B, ids.C, ids.D, ids.E]]
   );
   const byId = Object.fromEntries(statuses.rows.map((r) => [r.id, r.status]));
+  // Pricing v2: límite plan free = 1 cupón activo.
+  // Downgrade deja activo el más antiguo (A) y pausa el resto.
   const expected = {
     [ids.A]: 'active',
-    [ids.B]: 'active',
-    [ids.C]: 'active',
+    [ids.B]: 'paused_by_downgrade',
+    [ids.C]: 'paused_by_downgrade',
     [ids.D]: 'paused_by_downgrade',
     [ids.E]: 'paused_by_downgrade',
   };
