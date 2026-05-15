@@ -8,12 +8,10 @@ import { api, extractApiError } from '@/services/api';
 import { colors, spacing, fontSize } from '@/utils/theme';
 
 export default function VerifyBusiness() {
-  const { email, user_id } = useLocalSearchParams<{ email: string; user_id: string }>();
+  const { email } = useLocalSearchParams<{ email: string; user_id: string }>();
   const router = useRouter();
   const [emailCode, setEmailCode] = useState('');
-  const [phoneCode, setPhoneCode] = useState('');
   const [emailDone, setEmailDone] = useState(false);
-  const [phoneDone, setPhoneDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,28 +28,17 @@ export default function VerifyBusiness() {
     }
   };
 
-  const verifyPhone = async () => {
-    setErr(null);
-    setLoading(true);
-    try {
-      await api.post('/api/auth/verify-phone', { user_id: Number(user_id), code: phoneCode });
-      setPhoneDone(true);
-    } catch (e) {
-      setErr(extractApiError(e).error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const finishFlow = () => router.replace('/(auth)/login');
 
   return (
     <ScreenContainer>
       <Text style={styles.title}>Verifica tu negocio</Text>
-      <Text style={styles.sub}>Necesitamos confirmar tu correo y tu teléfono.</Text>
+      <Text style={styles.sub}>
+        Te enviamos un código por correo. Ingrésalo para activar tu cuenta.
+      </Text>
 
       <View style={styles.block}>
-        <Text style={styles.label}>1. Código por email {emailDone ? '✓' : ''}</Text>
+        <Text style={styles.label}>Código por email {emailDone ? '✓' : ''}</Text>
         {!emailDone && (
           <>
             <TextField
@@ -66,25 +53,9 @@ export default function VerifyBusiness() {
         )}
       </View>
 
-      <View style={styles.block}>
-        <Text style={styles.label}>2. Código por SMS {phoneDone ? '✓' : ''}</Text>
-        {!phoneDone && (
-          <>
-            <TextField
-              label="Código recibido por SMS"
-              keyboardType="number-pad"
-              maxLength={6}
-              value={phoneCode}
-              onChangeText={setPhoneCode}
-            />
-            <Button title="Verificar teléfono" onPress={verifyPhone} loading={loading} />
-          </>
-        )}
-      </View>
-
       {!!err && <Text style={styles.error}>{err}</Text>}
 
-      {emailDone && phoneDone && (
+      {emailDone && (
         <Button title="Ir a iniciar sesión" variant="primary" onPress={finishFlow} />
       )}
     </ScreenContainer>

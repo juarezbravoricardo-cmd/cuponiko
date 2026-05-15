@@ -73,6 +73,7 @@
       "typedRoutes": true
     },
     "extra": {
+      "googleMapsApiKey": "AIzaSyAGvhyv51t4zQNl8euR2NQSnfNR8aWdsho",
       "apiBaseUrl": "https://cuponiko-production.up.railway.app",
       "stripePublishableKey": "pk_test_51TRaZrK0YwCm2rUr60n3YR9vjoV7C49vBdmVZqHwkrKEFiRpqiLZ8PyQqTC9PJXQWnINuiRcD7xWcsB9pnLuyUeB00jFXit3C4",
       "googleWebClientId": "3826634841-6qh87cfrhvjn98ur2gfvi23jgupbtcpu.apps.googleusercontent.com",

@@ -234,8 +234,8 @@ async function registerBusiness({
   // 7: geocoding
   const geo = await geocodeAddress(address_input);
 
-  // INSERT transaccional de users + businesses + tokens
-  return withTransaction(async (client) => {
+  // Transacción: SOLO INSERTs en DB (users + businesses + email token)
+  const result = await withTransaction(async (client) => {
     const passwordHash = await hashPassword(password);
     const userIns = await client.query(
       `INSERT INTO users (email, password_hash, full_name, phone, role, is_active,
@@ -270,22 +270,44 @@ async function registerBusiness({
     // El campo `phone` se sigue recolectando y guardando en businesses (es necesario
     // para el perfil del negocio), pero no se inserta token ni se envía SMS.
     // const phoneCode = await createPhoneVerificationCode(client, userId, phone);
-    // Envío de códigos
-    await sendVerificationEmail(emailLower, emailCode);
+    // NO llamar sendVerificationEmail aquí: el envío SMTP es no-bloqueante y se hace
+    // FUERA de la transacción para evitar que un fallo de email haga rollback del registro.
     // DIFERIDO: ver comentario arriba.
     // await sendSmsCode(phone, phoneCode);
 
     return {
       user_id: userId,
       business_id: businessId,
-      email_verified: false,
-      phone_verified: false,
-      message: 'Cuenta creada. Verifica tu email y teléfono para continuar.',
-      _debug_email_code: process.env.NODE_ENV === 'test' ? emailCode : undefined,
-      // DIFERIDO: phoneCode no se genera mientras la verificación telefónica esté desactivada.
-      _debug_phone_code: undefined,
+      emailLower,
+      emailCode,
     };
   });
+
+  // FUERA de la transacción: envío de email no-bloqueante
+  let emailSent = true;
+  try {
+    await sendVerificationEmail(result.emailLower, result.emailCode);
+  } catch (err) {
+    emailSent = false;
+    console.error('[registerBusiness] email_send_failed_non_blocking', {
+      user_id: result.user_id,
+      error: err?.message,
+    });
+  }
+
+  return {
+    user_id: result.user_id,
+    business_id: result.business_id,
+    email_verified: false,
+    phone_verified: false,
+    email_sent: emailSent,
+    message: emailSent
+      ? 'Cuenta creada. Te enviamos un código a tu correo para verificar.'
+      : 'Cuenta creada. No pudimos enviar el correo de verificación; puedes solicitarlo de nuevo desde la pantalla de inicio de sesión.',
+    _debug_email_code: process.env.NODE_ENV === 'test' ? result.emailCode : undefined,
+    // DIFERIDO: phoneCode no se genera mientras la verificación telefónica esté desactivada.
+    _debug_phone_code: undefined,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
