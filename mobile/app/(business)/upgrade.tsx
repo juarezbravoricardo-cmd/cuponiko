@@ -21,8 +21,12 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { api, extractApiError } from '@/services/api';
+import { getMyBusiness } from '@/services/businessApi';
 
 // ─────────────────────────────────────────────
 // CONSTANTES
@@ -124,6 +128,7 @@ function useCountdown(deadline: number) {
 // ─────────────────────────────────────────────
 
 export default function UpgradeScreen() {
+  const router = useRouter();
   const countdown = useCountdown(MUNDIAL_DEADLINE);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'quarterly'>(
     countdown.expired ? 'monthly' : 'quarterly'
@@ -135,7 +140,42 @@ export default function UpgradeScreen() {
     if (countdown.expired) setSelectedPlan('monthly');
   }, [countdown.expired]);
 
+  // Flag para detectar el regreso a la app post-checkout. Se activa en
+  // handleUpgrade y se consume en el listener de AppState.
+  const expectingCheckoutReturn = useRef(false);
+
+  // Cuando el usuario vuelve del checkout de Stripe (que se abre en el navegador
+  // externo via Linking.openURL), la app pasa de 'background' a 'active'. Si
+  // estábamos esperando ese regreso, hacemos fetch a /business/me para detectar
+  // si el webhook ya marcó plan='premium'. Si sí, alertamos y redirigimos al
+  // perfil. Si no (webhook puede tardar segundos), no asustamos al usuario;
+  // verá el cambio cuando entre al perfil.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', async (state: AppStateStatus) => {
+      if (state !== 'active' || !expectingCheckoutReturn.current) return;
+      expectingCheckoutReturn.current = false;
+      try {
+        const data = await getMyBusiness();
+        if (data.plan === 'premium') {
+          const planName =
+            data.billing_interval === 'quarterly' ? 'Mundialista' : 'Premium';
+          Alert.alert(
+            '¡Pago exitoso!',
+            `Tu plan ahora es ${planName}.`,
+            [{ text: 'OK', onPress: () => router.replace('/(business)/profile') }]
+          );
+        }
+      } catch {
+        // Silencioso: si el fetch falla, el usuario verá el cambio al volver al perfil.
+      }
+    });
+    return () => sub.remove();
+  }, [router]);
+
   const handleUpgrade = useCallback(async () => {
+    // Resetear el flag por si el usuario inicia un segundo intento sin haber
+    // disparado el listener (por ejemplo, canceló el primer checkout).
+    expectingCheckoutReturn.current = false;
     setLoading(true);
     try {
       const res = await api.post('/api/billing/create-checkout-session', {
@@ -145,6 +185,8 @@ export default function UpgradeScreen() {
       const checkoutUrl: string | undefined =
         res.data?.data?.checkout_url ?? res.data?.checkout_url;
       if (checkoutUrl) {
+        // Marcamos antes de abrir el browser para no perder la transición.
+        expectingCheckoutReturn.current = true;
         await Linking.openURL(checkoutUrl);
       } else {
         Alert.alert('Error', 'No se obtuvo URL de pago.');

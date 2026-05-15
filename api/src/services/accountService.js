@@ -205,7 +205,53 @@ async function confirmAccountDeletion(userId, { code }) {
   };
 }
 
+// ────────────────────────────────────────────────────────────
+// GET /api/account/business/me (post-Stripe LIVE fix)
+// ────────────────────────────────────────────────────────────
+/**
+ * Retorna el estado actual del negocio del usuario autenticado.
+ *
+ * Por qué existe: el JWT solo guarda {sub, role, email}. Cuando Stripe webhook
+ * hace UPDATE a businesses.plan tras un pago, el JWT vivo no refleja el cambio
+ * y el frontend seguiría mostrando "Plan Gratuito". Este endpoint permite al
+ * cliente leer el estado fresco directamente de DB sin invalidar tokens.
+ *
+ * IMPORTANTE: NO se exponen stripe_customer_id ni stripe_subscription_id al
+ * frontend (regla de seguridad: IDs de Stripe nunca llegan al cliente).
+ */
+async function getMyBusiness(userId) {
+  const { rows } = await query(
+    `SELECT
+       id, business_name, category, display_address,
+       lat, lng, logo_url, status,
+       plan, billing_interval, subscription_status
+     FROM businesses
+     WHERE user_id = $1
+     LIMIT 1`,
+    [userId]
+  );
+  if (rows.length === 0) {
+    throw new AppError(404, 'BUSINESS_NOT_FOUND', 'No se encontró negocio asociado a esta cuenta.');
+  }
+  const b = rows[0];
+  return {
+    id: b.id,
+    business_name: b.business_name,
+    category: b.category,
+    display_address: b.display_address,
+    // lat/lng se almacenan como numeric — pg los devuelve como string. Convertir.
+    lat: b.lat !== null ? Number(b.lat) : null,
+    lng: b.lng !== null ? Number(b.lng) : null,
+    logo_url: b.logo_url,
+    status: b.status,
+    plan: b.plan,
+    billing_interval: b.billing_interval ?? 'monthly',
+    subscription_status: b.subscription_status,
+  };
+}
+
 module.exports = {
   requestAccountDeletion,
   confirmAccountDeletion,
+  getMyBusiness,
 };

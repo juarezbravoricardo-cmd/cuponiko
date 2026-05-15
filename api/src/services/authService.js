@@ -190,6 +190,8 @@ async function registerBusiness({
   address_input,
   phone,
   logo_url, // opcional; el upload de archivo lo maneja la ruta
+  lat,      // opcional (post pin-draggable). Si llega del frontend, se prefiere sobre geocoding.
+  lng,      // opcional. Misma semántica.
 }) {
   // Validación 2: campos requeridos
   if (
@@ -231,8 +233,33 @@ async function registerBusiness({
     throw new AppError(409, 'PHONE_EXISTS', 'Este número ya está asociado a otra cuenta.');
   }
 
-  // 7: geocoding
-  const geo = await geocodeAddress(address_input);
+  // 7: resolución de coordenadas.
+  // Preferencia: lat/lng del pin draggable del frontend (precisas, ubicación exacta
+  // del local elegida por el dueño). Fallback: geocoding desde texto, que mantiene
+  // compatibilidad con APKs antiguos que aún no envían lat/lng. Si llegan vía
+  // multipart/form-data como strings, se convierten a number antes de validar.
+  const latNum = typeof lat === 'string' ? Number(lat) : lat;
+  const lngNum = typeof lng === 'string' ? Number(lng) : lng;
+  const hasValidPin =
+    typeof latNum === 'number' &&
+    Number.isFinite(latNum) &&
+    latNum >= -90 &&
+    latNum <= 90 &&
+    typeof lngNum === 'number' &&
+    Number.isFinite(lngNum) &&
+    lngNum >= -180 &&
+    lngNum <= 180;
+
+  let geo;
+  if (hasValidPin) {
+    geo = {
+      lat: latNum,
+      lng: lngNum,
+      display_address: address_input.trim(),
+    };
+  } else {
+    geo = await geocodeAddress(address_input);
+  }
 
   // Transacción: SOLO INSERTs en DB (users + businesses + email token)
   const result = await withTransaction(async (client) => {

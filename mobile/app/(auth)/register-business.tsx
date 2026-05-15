@@ -1,8 +1,18 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View, Modal, FlatList, Pressable, TouchableOpacity } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  Modal,
+  FlatList,
+  Pressable,
+  TouchableOpacity,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
@@ -24,6 +34,12 @@ export default function RegisterBusiness() {
     email: '',
     password: '',
   });
+  // Coordenadas del pin draggable. Se inicializan al elegir una sugerencia del
+  // autocomplete y el usuario puede arrastrar el pin para precisar la ubicación
+  // exacta del local. El backend prioriza estos valores sobre el geocoding por
+  // texto (más preciso). Si quedan en null, el submit no se permite.
+  const [pinLat, setPinLat] = useState<number | null>(null);
+  const [pinLng, setPinLng] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -32,11 +48,16 @@ export default function RegisterBusiness() {
     setForm({ ...form, [k]: v });
 
   const selectedCategoryLabel = form.category || 'Selecciona una categoría';
+  const hasPin = pinLat !== null && pinLng !== null;
 
   const onSubmit = async () => {
     setErr(null);
     if (!form.address_input) {
       setErr('Selecciona una dirección de las sugerencias.');
+      return;
+    }
+    if (!hasPin) {
+      setErr('Ajusta el pin sobre la ubicación exacta de tu negocio antes de continuar.');
       return;
     }
     if (!form.category) {
@@ -53,6 +74,8 @@ export default function RegisterBusiness() {
         phone: form.phone.trim(),
         email: form.email.trim(),
         password: form.password,
+        lat: pinLat,
+        lng: pinLng,
       });
       const userId = r.data.data?.user_id;
       router.replace({
@@ -107,15 +130,23 @@ export default function RegisterBusiness() {
         <GooglePlacesAutocomplete
           placeholder="Empieza a escribir tu dirección..."
           minLength={3}
-          fetchDetails={false}
+          fetchDetails={true}
           enablePoweredByContainer={false}
           query={{
             key: GOOGLE_API_KEY,
             language: 'es',
             components: 'country:mx',
           }}
-          onPress={(data) => {
+          onPress={(data, details = null) => {
             onChange('address_input')(data.description);
+            // El autocomplete devuelve coordenadas aproximadas (a veces el centro
+            // del municipio). Las usamos como punto de partida del pin; el usuario
+            // las refina arrastrando.
+            const loc = (details as any)?.geometry?.location;
+            if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
+              setPinLat(loc.lat);
+              setPinLng(loc.lng);
+            }
           }}
           onFail={(error) => {
             console.warn('[Places] error:', error);
@@ -131,6 +162,42 @@ export default function RegisterBusiness() {
           }}
         />
       </View>
+
+      {/* Mapa con pin draggable. Solo se muestra cuando ya hay coordenadas
+          iniciales del autocomplete. En web no renderizamos MapView (el provider
+          de Google Maps requiere SDK nativo); el flujo de registro asume móvil. */}
+      {hasPin && Platform.OS !== 'web' && (
+        <View style={styles.mapBlock}>
+          <Text style={styles.mapHint}>
+            Arrastra el pin a la ubicación exacta de tu negocio
+          </Text>
+          <View style={styles.mapWrap}>
+            <MapView
+              style={styles.map}
+              provider={PROVIDER_GOOGLE}
+              initialRegion={{
+                latitude: pinLat as number,
+                longitude: pinLng as number,
+                latitudeDelta: 0.005,
+                longitudeDelta: 0.005,
+              }}
+            >
+              <Marker
+                coordinate={{
+                  latitude: pinLat as number,
+                  longitude: pinLng as number,
+                }}
+                draggable
+                onDragEnd={(e) => {
+                  setPinLat(e.nativeEvent.coordinate.latitude);
+                  setPinLng(e.nativeEvent.coordinate.longitude);
+                }}
+                pinColor={colors.secondary}
+              />
+            </MapView>
+          </View>
+        </View>
+      )}
 
       <TextField
         label="Teléfono (+52...)"
@@ -240,6 +307,21 @@ const styles = StyleSheet.create({
   },
   placesRow: { paddingHorizontal: spacing.md, paddingVertical: 10 },
   placesDescription: { fontSize: fontSize.sm, color: colors.textPrimary },
+
+  mapBlock: { marginBottom: spacing.sm },
+  mapHint: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginBottom: 6,
+  },
+  mapWrap: {
+    height: 240,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  map: { flex: 1 },
 
   modalBackdrop: {
     flex: 1,

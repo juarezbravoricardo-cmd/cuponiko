@@ -5,17 +5,16 @@
  * Cuando el dueño elimina la cuenta, el backend cascadea: suspende el negocio
  * y caduca cupones, además de marcar al user inactivo.
  *
- * Pricing v2 (Cambios 6/7): muestra el plan activo con etiqueta diferenciada
- * (Gratuito / Premium mensual / Mundialista trimestral) y solo expone el botón
- * "Actualizar a Premium" cuando el plan actual es 'free'. Como hoy el store de
- * auth no expone `plan` ni `billing_interval`, leemos esos campos con tipado
- * laxo y fallback a 'free' — comportamiento seguro: si no hay dato, el botón
- * permanece visible y el upgrade sigue siendo accesible.
+ * Pricing v2 + post-Stripe LIVE fix: el plan/billing_interval se leen desde
+ * GET /api/account/business/me en cada focus de la pantalla. El JWT no incluye
+ * estos campos (queda intacto: {sub, role, email}), por lo que el endpoint es
+ * la única fuente de verdad post-pago. Si el fetch falla (red caída), caemos
+ * al cast laxo del store como degradación elegante (comportamiento previo).
  */
 
 import React, { useCallback, useState } from 'react';
 import { Alert, Platform, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Button } from '@/components/Button';
@@ -24,6 +23,7 @@ import { useNotifications } from '@/stores/notificationStore';
 import { extractApiError } from '@/services/api';
 import { registerPushToken } from '@/services/notificationsApi';
 import { confirmDelete, requestDelete } from '@/services/accountApi';
+import { getMyBusiness, MyBusiness } from '@/services/businessApi';
 import { colors, fontSize, radii, spacing } from '@/utils/theme';
 
 type DeleteStep = 'idle' | 'request' | 'confirm';
@@ -40,7 +40,6 @@ function resolvePlanLabel(plan?: string, billingInterval?: string): string {
       ? 'Plan Mundialista (trimestral)'
       : 'Plan Premium (mensual)';
   }
-  // Default seguro: si el store aún no propaga plan, asumimos Gratuito.
   return 'Plan Gratuito';
 }
 
@@ -56,13 +55,40 @@ export default function BusinessProfile() {
   const { user, logout } = useAuth();
   const resetNotifications = useNotifications((s) => s.reset);
 
-  // El AuthUser tipado no incluye plan/billing_interval todavía. Leemos con cast
-  // laxo para no inventar features en el store. Si el JWT no los trae, el plan
-  // se resuelve a 'Plan Gratuito' por defecto.
+  // Fallback laxo al store (si el fetch a /business/me falla por red caída).
   const businessUser = (user as unknown as BusinessLikeUser | null) ?? null;
-  const currentPlan = businessUser?.plan ?? 'free';
-  const billingInterval = businessUser?.billing_interval;
-  const planLabel = resolvePlanLabel(currentPlan, billingInterval);
+
+  // Estado autoritativo: viene del endpoint /api/account/business/me.
+  const [businessData, setBusinessData] = useState<MyBusiness | null>(null);
+  const [businessLoading, setBusinessLoading] = useState(false);
+
+  // Refrescar en cada focus (especialmente al volver del checkout de Stripe).
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+      setBusinessLoading(true);
+      getMyBusiness()
+        .then((data) => {
+          if (mounted) setBusinessData(data);
+        })
+        .catch(() => {
+          // Silencioso: si falla, mantenemos businessData previo o caemos al store.
+        })
+        .finally(() => {
+          if (mounted) setBusinessLoading(false);
+        });
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
+
+  const currentPlan = businessData?.plan ?? businessUser?.plan ?? 'free';
+  const billingInterval = businessData?.billing_interval ?? businessUser?.billing_interval;
+  const planLabel =
+    businessLoading && !businessData
+      ? 'Cargando…'
+      : resolvePlanLabel(currentPlan, billingInterval);
   const nextRenewal = formatRenewalDate(businessUser?.subscription_current_period_end);
 
   const [pushEnabled, setPushEnabled] = useState(false);
