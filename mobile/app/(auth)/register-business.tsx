@@ -163,9 +163,31 @@ export default function RegisterBusiness() {
         />
       </View>
 
-      {/* Mapa con pin draggable. Solo se muestra cuando ya hay coordenadas
-          iniciales del autocomplete. En web no renderizamos MapView (el provider
-          de Google Maps requiere SDK nativo); el flujo de registro asume móvil. */}
+      <TextField
+        label="Teléfono (+52...)"
+        keyboardType="phone-pad"
+        value={form.phone}
+        onChangeText={onChange('phone')}
+      />
+      <TextField
+        label="Correo"
+        autoCapitalize="none"
+        keyboardType="email-address"
+        value={form.email}
+        onChangeText={onChange('email')}
+      />
+      <TextField
+        label="Contraseña"
+        secureTextEntry
+        value={form.password}
+        onChangeText={onChange('password')}
+      />
+
+      {/* Mapa con pin draggable. Va al FINAL del form (justo antes del error y
+          los botones) para que su área de 240px no bloquee los gestos de scroll
+          ni el touch a los TextField que viven arriba. Solo se renderiza cuando
+          ya hay coordenadas iniciales del autocomplete. En web no se renderiza
+          (PROVIDER_GOOGLE requiere SDK nativo); el flujo de registro asume móvil. */}
       {hasPin && Platform.OS !== 'web' && (
         <View style={styles.mapBlock}>
           <Text style={styles.mapHint}>
@@ -198,26 +220,6 @@ export default function RegisterBusiness() {
           </View>
         </View>
       )}
-
-      <TextField
-        label="Teléfono (+52...)"
-        keyboardType="phone-pad"
-        value={form.phone}
-        onChangeText={onChange('phone')}
-      />
-      <TextField
-        label="Correo"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={form.email}
-        onChangeText={onChange('email')}
-      />
-      <TextField
-        label="Contraseña"
-        secureTextEntry
-        value={form.password}
-        onChangeText={onChange('password')}
-      />
 
       {!!err && <Text style={styles.error}>{err}</Text>}
 
