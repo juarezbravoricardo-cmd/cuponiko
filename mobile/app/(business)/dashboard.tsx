@@ -6,13 +6,19 @@
  * recomendado de 5 ítems en mobile.
  */
 
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Button } from '@/components/Button';
 import { useAuth } from '@/stores/authStore';
+import { getMyBusiness, MyBusiness } from '@/services/businessApi';
 import { colors, fontSize, radii, spacing } from '@/utils/theme';
+
+// Tipo laxo para leer plan del store como fallback de degradación elegante
+// (mismo patrón que profile.tsx). El JWT no incluye plan, así que el store
+// solo lo tendría si fue inyectado en otro lado; lo tratamos como opcional.
+type BusinessLikeUser = { plan?: 'free' | 'premium' };
 
 type Tile = {
   title: string;
@@ -34,6 +40,52 @@ const TILES: Tile[] = [
 export default function BusinessDashboard() {
   const router = useRouter();
   const { user } = useAuth();
+
+  // Estado autoritativo del plan: viene de GET /api/account/business/me.
+  // Mismo patrón que profile.tsx para mantener consistencia.
+  const [businessData, setBusinessData] = useState<MyBusiness | null>(null);
+  const [businessLoading, setBusinessLoading] = useState(true);
+  const [businessFetchFailed, setBusinessFetchFailed] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+      setBusinessLoading(true);
+      setBusinessFetchFailed(false);
+      getMyBusiness()
+        .then((data) => {
+          if (mounted) setBusinessData(data);
+        })
+        .catch(() => {
+          if (mounted) setBusinessFetchFailed(true);
+        })
+        .finally(() => {
+          if (mounted) setBusinessLoading(false);
+        });
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
+
+  // Decisión de render del botón "Actualizar a Premium":
+  //   - Mientras carga el primer fetch → ocultar (evita flash del botón para
+  //     usuarios premium en cada focus de la pantalla).
+  //   - Si el fetch tuvo éxito → mostrar solo si plan === 'free'.
+  //   - Si el fetch falló → fallback al store laxo, y si tampoco hay info,
+  //     mostrar el botón (degradación elegante: prefiero que un premium vea
+  //     un botón de más a que un free no pueda upgradear si la red falló).
+  const businessUser = (user as unknown as BusinessLikeUser | null) ?? null;
+  let showUpgradeButton: boolean;
+  if (businessLoading && !businessData) {
+    showUpgradeButton = false;
+  } else if (businessData) {
+    showUpgradeButton = businessData.plan === 'free';
+  } else if (businessFetchFailed) {
+    showUpgradeButton = (businessUser?.plan ?? 'free') === 'free';
+  } else {
+    showUpgradeButton = true;
+  }
 
   return (
     <ScreenContainer>
@@ -72,13 +124,16 @@ export default function BusinessDashboard() {
         </Pressable>
       ))}
 
-      <View style={{ height: spacing.lg }} />
-
-      <Button
-        title="Actualizar a Premium"
-        variant="secondary"
-        onPress={() => router.push('/(business)/upgrade')}
-      />
+      {showUpgradeButton && (
+        <>
+          <View style={{ height: spacing.lg }} />
+          <Button
+            title="Actualizar a Premium"
+            variant="secondary"
+            onPress={() => router.push('/(business)/upgrade')}
+          />
+        </>
+      )}
     </ScreenContainer>
   );
 }
