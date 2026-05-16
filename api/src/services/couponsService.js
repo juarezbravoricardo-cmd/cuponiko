@@ -38,6 +38,7 @@ const {
   registerScanFailure,
   resetScanHistory,
 } = require('../middleware/scannerLimiter');
+const { invalidateBusinessCaches } = require('./cacheService');
 
 // ────────────────────────────────────────────────────────────
 // Helpers de validación comunes
@@ -240,6 +241,8 @@ async function createCoupon(userId, body) {
       ]
     );
     const row = ins.rows[0];
+    // Invalidar caché: el negocio cambió su lista de cupones activos.
+    invalidateBusinessCaches(biz.id);
     return {
       coupon_id: Number(row.id),
       status: row.status,
@@ -308,7 +311,7 @@ async function listMyCoupons(userId, statusFilter) {
 async function pauseCoupon(userId, couponId) {
   // Verificar pertenencia
   const r = await query(
-    `SELECT c.id, c.status
+    `SELECT c.id, c.status, c.business_id
        FROM coupons c
        JOIN businesses b ON b.id = c.business_id
       WHERE c.id = $1 AND b.user_id = $2`,
@@ -326,6 +329,8 @@ async function pauseCoupon(userId, couponId) {
   if (upd.rowCount === 0) {
     throw new AppError(400, 'INVALID_TRANSITION', 'Solo los cupones activos pueden pausarse.');
   }
+  // Invalidar caché: la lista de cupones activos del negocio cambió.
+  invalidateBusinessCaches(r.rows[0].business_id);
   return { coupon_id: Number(couponId), status: 'paused' };
 }
 
@@ -382,6 +387,10 @@ async function activateCoupon(userId, couponId) {
         'Este cupón no puede reactivarse desde su estado actual.'
       );
     }
+    // Invalidar caché tras COMMIT (queue-style: ejecutar al salir de la tx).
+    // Por simplicidad lo hacemos aquí: si la tx falla, withTransaction lanza
+    // antes y este código no corre.
+    invalidateBusinessCaches(c.business_id);
     return { coupon_id: Number(couponId), status: 'active' };
   });
 }

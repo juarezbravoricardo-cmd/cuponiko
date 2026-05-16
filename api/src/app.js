@@ -10,8 +10,10 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const compression = require('compression');
 
 const env = require('./config/env');
+const { query } = require('./config/db');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const { globalLimiter } = require('./middleware/rateLimiter');
 
@@ -37,6 +39,16 @@ function buildApp() {
   app.set('trust proxy', true);
 
   app.use(helmet());
+
+  // A2 — Compresión gzip de responses. Va antes de cualquier router para que
+  // alcance a todas las respuestas JSON. Threshold 1KB para no comprimir
+  // payloads chicos (overhead > beneficio).
+  app.use(
+    compression({
+      threshold: 1024,
+      level: 6,
+    })
+  );
 
   // CORS: lista blanca configurable via ALLOWED_ORIGINS (separada por comas).
   // En dev, si no se define, se permite localhost. En producción, sin orígenes
@@ -73,11 +85,40 @@ function buildApp() {
   // Rate limiter global
   app.use(globalLimiter);
 
-  // Healthcheck — Railway usa /health; /healthz se mantiene por compatibilidad.
-  const healthHandler = (_req, res) =>
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-  app.get('/health', healthHandler);
-  app.get('/healthz', healthHandler);
+  // A3 — Healthcheck para Railway.
+  // /health: verifica DB + PostGIS + memoria (rico, para detectar regresiones).
+  // /healthz: respuesta liviana sin tocar DB (compatibilidad y liveness probe).
+  app.get('/health', async (_req, res) => {
+    try {
+      await query('SELECT 1');
+      const geoCheck = await query('SELECT PostGIS_Version() AS v');
+      const mem = process.memoryUsage();
+      const heapUsedMB = Math.round(mem.heapUsed / 1024 / 1024);
+      const heapTotalMB = Math.round(mem.heapTotal / 1024 / 1024);
+      const rssMB = Math.round(mem.rss / 1024 / 1024);
+      res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        db: 'connected',
+        postgis: geoCheck.rows[0]?.v || null,
+        uptime_seconds: Math.round(process.uptime()),
+        memory: {
+          heapUsed: `${heapUsedMB}MB`,
+          heapTotal: `${heapTotalMB}MB`,
+          rss: `${rssMB}MB`,
+        },
+      });
+    } catch (err) {
+      res.status(503).json({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        error: err && err.message ? err.message : 'unknown',
+      });
+    }
+  });
+  app.get('/healthz', (_req, res) =>
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() })
+  );
 
   // Rutas versionadas
   app.use('/api/auth', authRoutes);

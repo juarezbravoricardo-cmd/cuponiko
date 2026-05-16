@@ -17,6 +17,7 @@ const { query, withTransaction } = require('../config/db');
 const { AppError } = require('../utils/AppError');
 const { createCheckoutSession, verifyWebhookSignature } = require('./stripe');
 const logger = require('../utils/logger');
+const { invalidateBusinessCaches } = require('./cacheService');
 
 // ─────────────────────────────────────────────────────────────
 // BILL-01
@@ -162,6 +163,9 @@ async function handleCheckoutCompleted(event) {
     );
   });
 
+  // Invalidar caché tras COMMIT del upgrade: cupones reactivados, plan='premium'.
+  invalidateBusinessCaches(businessId);
+
   // Push/email futuro: queda fuera de esta transacción para no bloquear
   // el ack al webhook. Fase 3 integrará Expo push.
 }
@@ -220,7 +224,16 @@ async function handleSubscriptionDeleted(event) {
        VALUES ($1, 'plan_downgraded', $2::jsonb)`,
       [businessId, JSON.stringify({ stripe_event: event.id, paused: Math.max(0, activeCount - 1) })]
     );
+
+    // Capturar businessId resuelto para invalidación post-COMMIT.
+    handleSubscriptionDeleted._lastBusinessId = businessId;
   });
+
+  // Invalidar caché tras COMMIT del downgrade: cupones pausados, plan='free'.
+  if (handleSubscriptionDeleted._lastBusinessId) {
+    invalidateBusinessCaches(handleSubscriptionDeleted._lastBusinessId);
+    handleSubscriptionDeleted._lastBusinessId = null;
+  }
 }
 
 async function handlePaymentFailed(event) {

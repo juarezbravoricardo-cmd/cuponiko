@@ -9,9 +9,15 @@ const express = require('express');
 const { asyncHandler } = require('../utils/AppError');
 const internalOnly = require('../middleware/internalOnly');
 const jobs = require('../services/jobsService');
+const { getStats } = require('../services/cacheService');
 
 const router = express.Router();
 router.use(internalOnly);
+
+// A1 — Cache stats para monitoring (hit ratio, keys vivas).
+router.get('/cache-stats', (_req, res) => {
+  res.status(200).json({ data: getStats() });
+});
 
 router.post(
   '/jobs/coupon-expiry-notifier',

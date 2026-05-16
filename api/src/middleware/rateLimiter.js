@@ -18,10 +18,10 @@ const { AppError } = require('../utils/AppError');
 const { query } = require('../config/db');
 
 // ────────────────────────────────────────────────────────────
-// Rate limiter global en memoria (por IP, por minuto)
+// Rate limiter global en memoria (por userId si autenticado, sino por IP)
 // ────────────────────────────────────────────────────────────
 
-const globalBuckets = new Map(); // ip -> { count, resetAt }
+const globalBuckets = new Map(); // key -> { count, resetAt }
 
 function resolveIp(req) {
   const xff = req.headers['x-forwarded-for'];
@@ -29,15 +29,30 @@ function resolveIp(req) {
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
+/**
+ * A4 — Resuelve la key del bucket. Prefiere userId cuando esté disponible
+ * (req.user.id seteado por jwtVerify) para no bloquear a varios usuarios
+ * detrás de la misma IP NAT/CGNAT (WiFi pública, redes celulares). Fallback
+ * a IP cuando el request no está autenticado.
+ *
+ * Nota: este middleware se monta globalmente ANTES de jwtVerify, por lo que
+ * en la práctica casi siempre cae al branch de IP. Queda preparado para si
+ * a futuro este limiter se usa también a nivel de router autenticado.
+ */
+function resolveKey(req) {
+  if (req.user && req.user.id) return `u:${req.user.id}`;
+  return `ip:${resolveIp(req)}`;
+}
+
 function globalLimiter(req, _res, next) {
-  const ip = resolveIp(req);
+  const key = resolveKey(req);
   const now = Date.now();
   const windowMs = 60 * 1000;
   const max = env.RATE_LIMIT_GLOBAL_PER_MIN;
 
-  const bucket = globalBuckets.get(ip);
+  const bucket = globalBuckets.get(key);
   if (!bucket || bucket.resetAt <= now) {
-    globalBuckets.set(ip, { count: 1, resetAt: now + windowMs });
+    globalBuckets.set(key, { count: 1, resetAt: now + windowMs });
     return next();
   }
   bucket.count += 1;
@@ -52,8 +67,8 @@ function globalLimiter(req, _res, next) {
 // Limpieza periódica para que el Map no crezca sin control
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, b] of globalBuckets) {
-    if (b.resetAt <= now) globalBuckets.delete(ip);
+  for (const [k, b] of globalBuckets) {
+    if (b.resetAt <= now) globalBuckets.delete(k);
   }
 }, 5 * 60 * 1000).unref?.();
 

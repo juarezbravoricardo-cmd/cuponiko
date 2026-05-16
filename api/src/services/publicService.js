@@ -16,6 +16,7 @@
 
 const { query } = require('../config/db');
 const { AppError } = require('../utils/AppError');
+const { businessProfileCache, getOrSet } = require('./cacheService');
 
 // ────────────────────────────────────────────────────────────
 // BIZ-01: GET /api/businesses/:id/public
@@ -26,46 +27,50 @@ async function getBusinessPublic(rawId) {
     throw new AppError(404, 'NOT_FOUND', 'Negocio no encontrado.');
   }
 
-  const r = await query(
-    `SELECT b.id,
-            b.business_name,
-            b.category,
-            b.display_address,
-            b.lat,
-            b.lng,
-            b.logo_url,
-            b.created_at,
-            (
-              SELECT COUNT(*)::int FROM coupons c
-                WHERE c.business_id = b.id
-                  AND c.status = 'active'
-                  AND c.end_date >= CURRENT_DATE
-            ) AS active_coupons_count,
-            EXISTS (
-              SELECT 1 FROM loyalty_cards lc
-                WHERE lc.business_id = b.id AND lc.is_active = true
-            ) AS has_loyalty_program
-       FROM businesses b
-      WHERE b.id = $1
-        AND b.status = 'active'`,
-    [id]
-  );
-  if (r.rowCount === 0) {
-    throw new AppError(404, 'NOT_FOUND', 'Negocio no encontrado.');
-  }
-  const b = r.rows[0];
-  return {
-    id: Number(b.id),
-    business_name: b.business_name,
-    category: b.category,
-    display_address: b.display_address,
-    lat: b.lat !== null ? Number(b.lat) : null,
-    lng: b.lng !== null ? Number(b.lng) : null,
-    logo_url: b.logo_url,
-    active_coupons_count: b.active_coupons_count,
-    has_loyalty_program: b.has_loyalty_program,
-    created_at: b.created_at,
-  };
+  // Cache BIZ-01: perfil público por id. TTL 10 min, invalidado en mutaciones
+  // del negocio (ver invalidateBusinessCaches). Errores NO se cachean.
+  return getOrSet(businessProfileCache, `biz:${id}`, async () => {
+    const r = await query(
+      `SELECT b.id,
+              b.business_name,
+              b.category,
+              b.display_address,
+              b.lat,
+              b.lng,
+              b.logo_url,
+              b.created_at,
+              (
+                SELECT COUNT(*)::int FROM coupons c
+                  WHERE c.business_id = b.id
+                    AND c.status = 'active'
+                    AND c.end_date >= CURRENT_DATE
+              ) AS active_coupons_count,
+              EXISTS (
+                SELECT 1 FROM loyalty_cards lc
+                  WHERE lc.business_id = b.id AND lc.is_active = true
+              ) AS has_loyalty_program
+         FROM businesses b
+        WHERE b.id = $1
+          AND b.status = 'active'`,
+      [id]
+    );
+    if (r.rowCount === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Negocio no encontrado.');
+    }
+    const b = r.rows[0];
+    return {
+      id: Number(b.id),
+      business_name: b.business_name,
+      category: b.category,
+      display_address: b.display_address,
+      lat: b.lat !== null ? Number(b.lat) : null,
+      lng: b.lng !== null ? Number(b.lng) : null,
+      logo_url: b.logo_url,
+      active_coupons_count: b.active_coupons_count,
+      has_loyalty_program: b.has_loyalty_program,
+      created_at: b.created_at,
+    };
+  });
 }
 
 // ────────────────────────────────────────────────────────────

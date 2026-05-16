@@ -20,6 +20,7 @@ const {
   getBusinessByUserId,
   assertBusinessActive,
 } = require('../middleware/planChecker');
+const { invalidateBusinessCaches } = require('./cacheService');
 
 const COST_TYPES = new Set(['cpc', 'flat']);
 const DISCOUNT_TYPES = new Set(['percent', 'fixed', '2x1', 'free']);
@@ -176,6 +177,10 @@ async function createAd(userId, body) {
       `UPDATE coupons SET ad_id = $1 WHERE id = $2`,
       [adId, couponId]
     );
+
+    // Invalidar caché: el carrusel HOME-03 y el perfil del negocio cambian
+    // al publicar un nuevo anuncio + cupón exclusivo.
+    invalidateBusinessCaches(biz.id);
 
     return {
       ad_id: adId,
