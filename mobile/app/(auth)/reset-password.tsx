@@ -36,6 +36,7 @@ export default function ResetPassword() {
         secureTextEntry
         value={newPassword}
         onChangeText={setNewPassword}
+        hint="Mínimo 8 caracteres y al menos un número."
       />
       {!!err && <Text style={styles.error}>{err}</Text>}
       <Button title="Guardar" onPress={onSubmit} loading={loading} />

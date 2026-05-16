@@ -7,9 +7,11 @@
  *
  * Capas visuales (de arriba a abajo):
  *   1. Banner de ubicación (indica fuente GPS/IP/default y permite reintentar).
- *   2. Carrusel de anuncios activos (HOME-03).
- *   3. Mapa con pins de negocios cercanos (HOME-01).
- *   4. Lista scrolleable de negocios (ordenados por distancia).
+ *   2. Selector de radio de búsqueda (1/5/10/20 km).
+ *   3. Filtro por categoría (chips horizontales scrolleables).
+ *   4. Carrusel de anuncios activos (HOME-03).
+ *   5. Mapa con pins de negocios cercanos (HOME-01).
+ *   6. Lista scrolleable de negocios (ordenados por distancia).
  *
  * Nota de robustez (AP-19 está en el backend, aquí solo consumimos 50 max).
  * Nota de diseño (BP-12): si `source !== 'gps'` mostramos CTA para pedir
@@ -42,8 +44,17 @@ import {
 import { useAuth } from '@/stores/authStore';
 import { colors, fontSize, radii, spacing } from '@/utils/theme';
 import { Button } from '@/components/Button';
+import { BUSINESS_CATEGORIES } from '@/constants/categories';
 
-const DEFAULT_RADIUS = 5000;
+// Opciones del selector de radio. Valores en metros para que coincidan con el
+// contrato del backend (`radius` en metros, máx 20000). El backend hace el
+// clamp final, pero lo limitamos en UI para no enviar valores fuera de rango.
+const RADIUS_OPTIONS: { label: string; value: number }[] = [
+  { label: '1 km', value: 1000 },
+  { label: '5 km', value: 5000 },
+  { label: '10 km', value: 10000 },
+  { label: '20 km', value: 20000 },
+];
 
 export default function ConsumerHome() {
   const router = useRouter();
@@ -55,13 +66,24 @@ export default function ConsumerHome() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Filtros expuestos en UI. `category === null` significa "Todas" y NO se
+  // envía al backend (queremos que homeService.js aplique su rama "sin filtro"
+  // en vez de matchear contra el string "null").
+  const [radius, setRadius] = useState<number>(5000);
+  const [category, setCategory] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     if (!coords) return;
     setLoading(true);
     setError(null);
     try {
       const [b, a] = await Promise.all([
-        fetchNearby({ lat: coords.lat, lng: coords.lng, radius: DEFAULT_RADIUS }),
+        fetchNearby({
+          lat: coords.lat,
+          lng: coords.lng,
+          radius,
+          category: category ?? undefined,
+        }),
         fetchActiveAds().catch(() => [] as Ad[]),
       ]);
       setBusinesses(b);
@@ -71,7 +93,7 @@ export default function ConsumerHome() {
     } finally {
       setLoading(false);
     }
-  }, [coords]);
+  }, [coords, radius, category]);
 
   useEffect(() => {
     load();
@@ -95,6 +117,8 @@ export default function ConsumerHome() {
     }
     router.push({ pathname: '/(consumer)/coupon/[id]', params: { id: String(ad.coupon.coupon_id) } });
   };
+
+  const hasFilters = category !== null || radius !== 5000;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -126,6 +150,60 @@ export default function ConsumerHome() {
               <Button title="Activar GPS" variant="ghost" onPress={refresh} />
             </View>
           )}
+
+          {/* Selector de radio (FIX D) */}
+          <View style={styles.filterBlock}>
+            <Text style={styles.filterLabel}>Buscar en un radio de:</Text>
+            <View style={styles.radiusRow}>
+              {RADIUS_OPTIONS.map((opt) => {
+                const active = radius === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setRadius(opt.value)}
+                    style={[styles.chip, active && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipTxt, active && styles.chipTxtActive]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Filtro por categoría (FIX E). ScrollView horizontal libre. */}
+          <View style={styles.filterBlock}>
+            <Text style={styles.filterLabel}>Categoría:</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryRow}
+            >
+              <Pressable
+                onPress={() => setCategory(null)}
+                style={[styles.chip, category === null && styles.chipActive]}
+              >
+                <Text style={[styles.chipTxt, category === null && styles.chipTxtActive]}>
+                  Todas
+                </Text>
+              </Pressable>
+              {BUSINESS_CATEGORIES.map((cat) => {
+                const active = category === cat.value;
+                return (
+                  <Pressable
+                    key={cat.value}
+                    onPress={() => setCategory(cat.value)}
+                    style={[styles.chip, active && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipTxt, active && styles.chipTxtActive]}>
+                      {cat.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
 
           {ads.length > 0 && (
             <View>
@@ -192,7 +270,9 @@ export default function ConsumerHome() {
             </View>
           ) : businesses.length === 0 ? (
             <Text style={styles.muted}>
-              Aún no hay negocios con cupones activos cerca de ti. Regresa pronto.
+              {hasFilters
+                ? 'No encontramos negocios con esos filtros. Prueba ampliando el rango o cambiando la categoría.'
+                : 'Aún no hay negocios con cupones activos cerca de ti. Regresa pronto.'}
             </Text>
           ) : (
             <View style={{ gap: spacing.md }}>
@@ -295,6 +375,40 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     paddingHorizontal: spacing.xs,
   },
+  // Filtros
+  filterBlock: { gap: spacing.xs },
+  filterLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    paddingHorizontal: spacing.xs,
+  },
+  radiusRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bgLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
+  },
+  chipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+  },
+  chipTxt: { color: colors.textPrimary, fontWeight: '600' },
+  chipTxtActive: { color: '#FFF' },
+  // Resto
   adCard: { width: 220, gap: spacing.xs },
   adImg: { width: 220, height: 110, borderRadius: radii.md, backgroundColor: colors.bgMuted },
   adPlaceholder: { alignItems: 'center', justifyContent: 'center' },

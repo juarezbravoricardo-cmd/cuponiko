@@ -181,6 +181,7 @@ export default function RegisterBusiness() {
         secureTextEntry
         value={form.password}
         onChangeText={onChange('password')}
+        hint="Mínimo 8 caracteres y al menos un número."
       />
 
       {/* Mapa con pin draggable. Va al FINAL del form (justo antes del error y

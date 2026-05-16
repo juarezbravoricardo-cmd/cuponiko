@@ -49,10 +49,11 @@ export default function RegisterConsumer() {
         onChangeText={onChange('email')}
       />
       <TextField
-        label="Contraseña (mín. 8 caracteres y un número)"
+        label="Contraseña"
         secureTextEntry
         value={form.password}
         onChangeText={onChange('password')}
+        hint="Mínimo 8 caracteres y al menos un número."
       />
       {!!err && <Text style={styles.error}>{err}</Text>}
       <Button title="Crear cuenta" onPress={onSubmit} loading={loading} />
