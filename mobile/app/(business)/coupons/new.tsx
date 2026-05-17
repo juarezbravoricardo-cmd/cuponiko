@@ -383,7 +383,8 @@ function Toggle({
       <Switch
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: colors.border, true: colors.primary }}
+        trackColor={{ false: colors.border, true: colors.secondary }}
+        thumbColor={value ? '#FFFFFF' : '#FFFFFF'}
       />
     </View>
   );
