@@ -28,7 +28,7 @@ export default function LoginScreen() {
     <ScreenContainer>
       <View style={styles.header}>
         <Text style={styles.brand}>Cuponiko</Text>
-        <Text style={styles.subtitle}>Descuentos y cupones cerca de ti</Text>
+        <Text style={styles.subtitle}>¡Los mejores cupones de descuentos de tus lugares favoritos y cercanos a ti!</Text>
       </View>
       <TextField
         label="Correo"
@@ -73,7 +73,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   header: { alignItems: 'center', marginBottom: spacing.lg, marginTop: spacing.xl },
   brand: { fontSize: fontSize.xxl, fontWeight: '800', color: colors.primary },
-  subtitle: { color: colors.textMuted, marginTop: spacing.xs },
+  subtitle: { color: colors.textMuted, marginTop: spacing.xs, textAlign: 'center', fontSize: fontSize.sm },
   link: {
     color: colors.primary,
     textAlign: 'center',
