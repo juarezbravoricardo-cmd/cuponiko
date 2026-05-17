@@ -17,7 +17,7 @@
  */
 
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Button } from '@/components/Button';
@@ -235,16 +235,20 @@ export default function NewCoupon() {
         </View>
       )}
 
-      <ScrollView horizontal contentContainerStyle={styles.navRow}>
+      <View style={styles.navRow}>
         {step > 1 && (
-          <Button title="Atrás" variant="ghost" onPress={() => setStep((s) => s - 1)} />
+          <View style={{ flex: 1 }}>
+            <Button title="Atrás" variant="ghost" onPress={() => setStep((s) => s - 1)} />
+          </View>
         )}
-        {step < 5 ? (
-          <Button title="Continuar" onPress={goNext} />
-        ) : (
-          <Button title="Crear cupón" onPress={submit} loading={submitting} />
-        )}
-      </ScrollView>
+        <View style={{ flex: 1 }}>
+          {step < 5 ? (
+            <Button title="Continuar" onPress={goNext} />
+          ) : (
+            <Button title="Crear cupón" onPress={submit} loading={submitting} />
+          )}
+        </View>
+      </View>
     </ScreenContainer>
   );
 }
@@ -297,7 +301,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipTxt: { color: colors.textMuted, fontWeight: '700' },
   chipTxtActive: { color: '#FFF' },
-  navRow: { gap: spacing.md, marginTop: spacing.lg },
+  navRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
   toggleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
