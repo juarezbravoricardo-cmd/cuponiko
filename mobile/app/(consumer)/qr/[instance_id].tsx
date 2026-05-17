@@ -131,7 +131,8 @@ export default function QrScreen() {
                 {mm}:{ss}
               </Text>
             </View>
-            <Text style={styles.shortCodeLabel}>¿No escanea?</Text>
+            <Text style={styles.shortCodeLabel}>¿No funciona el escáner?</Text>
+            <Text style={styles.shortCodeHint}>Pide al cajero que ingrese este código manualmente:</Text>
             <Pressable
               onLongPress={() => {
                 Alert.alert('Código manual', `Dícta este código al cajero:\n\n${qr.short_code}`);
@@ -174,6 +175,13 @@ const styles = StyleSheet.create({
   timerWarn: { backgroundColor: colors.danger },
   timerTxt: { fontSize: fontSize.xxl, fontWeight: '800', color: colors.textPrimary },
   shortCodeLabel: { color: colors.textMuted, marginTop: spacing.md },
+  shortCodeHint: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.xs,
+  },
   shortCodeBtn: {
     backgroundColor: colors.bgMuted,
     paddingHorizontal: spacing.lg,
