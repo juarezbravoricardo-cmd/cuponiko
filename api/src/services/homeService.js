@@ -67,7 +67,18 @@ async function nearbyBusinesses({ lat, lng, radius, category }) {
                 SELECT COUNT(*)::int FROM coupons c
                  WHERE c.business_id = b.id AND c.status = 'active'
                    AND c.end_date >= CURRENT_DATE
-              ), 0) AS active_coupons_count
+              ), 0) AS active_coupons_count,
+              (SELECT json_build_object(
+                  'title', c.title,
+                  'discount_type', c.discount_type,
+                  'discount_value', c.discount_value
+                )
+                 FROM coupons c
+                 WHERE c.business_id = b.id
+                   AND c.status = 'active'
+                   AND c.end_date >= CURRENT_DATE
+                 ORDER BY c.created_at DESC
+                 LIMIT 1) AS top_coupon
          FROM businesses b
          ${where}
          ORDER BY dist_m ASC
@@ -85,6 +96,13 @@ async function nearbyBusinesses({ lat, lng, radius, category }) {
       lng: Number(row.lng),
       distance_m: Math.round(Number(row.dist_m)),
       active_coupons_count: Number(row.active_coupons_count),
+      top_coupon: row.top_coupon
+        ? {
+            title: row.top_coupon.title,
+            discount_type: row.top_coupon.discount_type,
+            discount_value: Number(row.top_coupon.discount_value),
+          }
+        : null,
     }));
   });
 }

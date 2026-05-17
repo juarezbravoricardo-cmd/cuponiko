@@ -29,6 +29,11 @@ export interface NearbyBusiness {
   lng: number;
   distance_m: number;
   active_coupons_count: number;
+  top_coupon: {
+    title: string;
+    discount_type: DiscountType;
+    discount_value: number;
+  } | null;
 }
 
 export interface AdCoupon {

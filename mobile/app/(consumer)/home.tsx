@@ -303,6 +303,11 @@ export default function ConsumerHome() {
                     <Text style={styles.cardSub} numberOfLines={1}>
                       {b.category} · {formatDistance(b.distance_m)}
                     </Text>
+                    {b.top_coupon && (
+                      <Text style={styles.cardCoupon} numberOfLines={1}>
+                        {'🏷️ '}{b.top_coupon.title}
+                      </Text>
+                    )}
                     <Text style={styles.cardCount}>
                       {b.active_coupons_count} cupones activos
                     </Text>
@@ -438,5 +443,11 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: fontSize.md, fontWeight: '800', color: colors.textPrimary },
   cardSub: { color: colors.textMuted, fontSize: fontSize.sm },
   cardCount: { color: colors.primary, fontSize: fontSize.sm, fontWeight: '700' },
+  cardCoupon: {
+    color: colors.secondary,
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    marginTop: 2,
+  },
   muted: { color: colors.textMuted, textAlign: 'center' },
 });
