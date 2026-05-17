@@ -58,6 +58,22 @@ async function getBusinessPublic(rawId) {
       throw new AppError(404, 'NOT_FOUND', 'Negocio no encontrado.');
     }
     const b = r.rows[0];
+
+    // Cupones activos del negocio (lista pública). Regla de seguridad:
+    // NO exponer uses_count; calcular remaining_uses = total_usage_limit - uses_count.
+    const couponsResult = await query(
+      `SELECT id AS coupon_id, title, description, discount_type, discount_value,
+              precio_referencia, start_date, end_date, usage_limit_per_user,
+              total_usage_limit, uses_count, transferable, accumulable, status
+         FROM coupons
+        WHERE business_id = $1
+          AND status = 'active'
+          AND end_date >= CURRENT_DATE
+        ORDER BY created_at DESC
+        LIMIT 20`,
+      [id]
+    );
+
     return {
       id: Number(b.id),
       business_name: b.business_name,
@@ -69,6 +85,32 @@ async function getBusinessPublic(rawId) {
       active_coupons_count: b.active_coupons_count,
       has_loyalty_program: b.has_loyalty_program,
       created_at: b.created_at,
+      coupons: couponsResult.rows.map((c) => ({
+        coupon_id: Number(c.coupon_id),
+        title: c.title,
+        description: c.description,
+        discount_type: c.discount_type,
+        discount_value: c.discount_value !== null ? Number(c.discount_value) : null,
+        precio_referencia:
+          c.precio_referencia !== null ? Number(c.precio_referencia) : null,
+        start_date:
+          typeof c.start_date === 'string'
+            ? c.start_date
+            : c.start_date.toISOString().slice(0, 10),
+        end_date:
+          typeof c.end_date === 'string'
+            ? c.end_date
+            : c.end_date.toISOString().slice(0, 10),
+        usage_limit_per_user: c.usage_limit_per_user,
+        total_usage_limit: c.total_usage_limit,
+        remaining_uses: Math.max(
+          0,
+          Number(c.total_usage_limit || 0) - Number(c.uses_count || 0)
+        ),
+        transferable: c.transferable,
+        accumulable: c.accumulable,
+        status: c.status,
+      })),
     };
   });
 }

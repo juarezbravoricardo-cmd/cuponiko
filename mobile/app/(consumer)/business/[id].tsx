@@ -22,21 +22,43 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '@/services/api';
-import {
-  saveCoupon,
-  type BusinessCouponListItem,
-} from '@/services/couponsApi';
+import { saveCoupon } from '@/services/couponsApi';
+import type { CouponStatus, DiscountType } from '@/services/couponsApi';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { colors, fontSize, radii, spacing } from '@/utils/theme';
 import { formatDiscount } from '@/utils/format';
 
+/**
+ * Cupón público de un negocio (BIZ-01).
+ * Diferente a BusinessCouponListItem porque NO expone uses_count;
+ * solo remaining_uses (regla de seguridad del spec).
+ */
+interface PublicBusinessCoupon {
+  coupon_id: number;
+  title: string;
+  description: string | null;
+  discount_type: DiscountType;
+  discount_value: number;
+  precio_referencia: number | null;
+  start_date: string;
+  end_date: string;
+  usage_limit_per_user: number;
+  total_usage_limit: number;
+  remaining_uses: number;
+  transferable: boolean;
+  accumulable: boolean;
+  status: CouponStatus;
+}
+
 interface PublicBusiness {
-  business_id: number;
+  id: number;
   business_name: string;
   category: string;
   logo_url: string | null;
   display_address: string | null;
-  coupons: BusinessCouponListItem[];
+  active_coupons_count: number;
+  has_loyalty_program: boolean;
+  coupons: PublicBusinessCoupon[];
 }
 
 export default function BusinessProfile() {
@@ -50,20 +72,11 @@ export default function BusinessProfile() {
     if (!id) return;
     (async () => {
       try {
-        // El endpoint público por ID lo implementaremos con el listado nearby
-        // filtrado en cliente. Si el backend expone luego /businesses/:id se
-        // cambia una sola línea.
-        const r = await api.get(`/api/businesses/${id}/public`).catch(async () => {
-          // Fallback: derivar desde nearby (infalible pero trae 1 request extra)
-          const rr = await api.get('/api/businesses/nearby', {
-            params: { lat: 19.4326, lng: -99.1332, radius: 500000 },
-          });
-          const b = rr.data.data.businesses.find(
-            (x: { business_id: number }) => x.business_id === Number(id)
-          );
-          return { data: { data: { ...b, coupons: [] } } };
-        });
-        setData(r.data.data);
+        // BIZ-01 (publicService.getBusinessPublic) ya retorna `coupons` con la
+        // lista de cupones activos del negocio. No requerimos fallback hacia
+        // /nearby porque eso forzaba coupons:[] y ocultaba cupones reales.
+        const r = await api.get(`/api/businesses/${id}/public`);
+        setData(r.data.data as PublicBusiness);
       } catch {
         Alert.alert('Error', 'No pudimos cargar el negocio.');
       } finally {
