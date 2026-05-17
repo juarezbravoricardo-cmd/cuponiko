@@ -261,6 +261,9 @@ export default function ConsumerHome() {
           </View>
 
           <Text style={styles.sectionTitle}>Cerca de ti</Text>
+          <Text style={styles.sectionHint}>
+            Toca un negocio para ver sus cupones y guardarlos en tu cartera.
+          </Text>
           {loading ? (
             <ActivityIndicator color={colors.primary} />
           ) : error ? (
@@ -379,6 +382,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.textPrimary,
     paddingHorizontal: spacing.xs,
+  },
+  sectionHint: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    paddingHorizontal: spacing.xs,
+    marginBottom: spacing.sm,
   },
   // Filtros
   filterBlock: { gap: spacing.xs },

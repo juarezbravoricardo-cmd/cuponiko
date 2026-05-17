@@ -117,6 +117,7 @@ export default function QrScreen() {
         ) : (
           <>
             <Text style={styles.title}>Muestra este código al cajero</Text>
+            <Text style={styles.qrHint}>El cajero escaneará el QR para aplicar tu descuento. El código tiene tiempo límite.</Text>
             <View style={styles.qrBox}>
               <QRCode
                 value={qr.jwt}
@@ -159,6 +160,12 @@ export default function QrScreen() {
 const styles = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   title: { fontSize: fontSize.lg, fontWeight: '700', color: colors.textPrimary },
+  qrHint: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
+  },
   qrBox: {
     backgroundColor: '#FFFFFF',
     padding: spacing.lg,

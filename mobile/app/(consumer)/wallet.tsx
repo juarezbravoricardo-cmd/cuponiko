@@ -75,7 +75,7 @@ export default function Wallet() {
       ) : items.length === 0 ? (
         <Text style={styles.muted}>
           {tab === 'active'
-            ? 'Aún no tienes cupones guardados. Explora negocios cerca de ti.'
+            ? 'Aún no tienes cupones guardados.\n\nVe a Inicio, explora los negocios cerca de ti y toca "Guardar" en el cupón que te interese. Aparecerá aquí listo para usar.'
             : 'No hay cupones en tu historial todavía.'}
         </Text>
       ) : (
