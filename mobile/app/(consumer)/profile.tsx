@@ -16,7 +16,7 @@
  *  - Haptic feedback en confirmación de eliminación.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -38,7 +38,7 @@ export default function ConsumerProfile() {
   const resetNotifications = useNotifications((s) => s.reset);
   const resetLoyalty = useLoyalty((s) => s.reset);
 
-  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(true);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
 
@@ -50,6 +50,7 @@ export default function ConsumerProfile() {
 
   const onTogglePush = useCallback(
     async (next: boolean) => {
+      // (useEffect abajo registra el token al montar si pushEnabled=true)
       setPushError(null);
       setPushBusy(true);
       try {
@@ -73,6 +74,16 @@ export default function ConsumerProfile() {
     },
     [user?.id]
   );
+
+  // Registra el token push automáticamente al montar si está habilitado.
+  // Silencioso si falla; el toggle queda activo y el backend recibirá el token
+  // en el primer reintento (al apagar/prender o al re-montar la pantalla).
+  useEffect(() => {
+    if (pushEnabled && user?.id) {
+      onTogglePush(true).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onRequestDelete = useCallback(async () => {
     setDeleteError(null);
