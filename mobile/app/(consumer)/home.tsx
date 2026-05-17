@@ -312,7 +312,7 @@ export default function ConsumerHome() {
                       </Text>
                     )}
                     <Text style={styles.cardCount}>
-                      {b.active_coupons_count} cupones activos
+                      {b.active_coupons_count} {b.active_coupons_count === 1 ? 'oferta disponible para ti' : 'ofertas disponibles para ti'}
                     </Text>
                   </View>
                 </Pressable>
