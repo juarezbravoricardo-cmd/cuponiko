@@ -132,7 +132,14 @@ export default function NewCoupon() {
 
       {step === 1 && (
         <View style={styles.block}>
-          <Label text="Título" />
+          <Label
+            text="Título"
+            hint={{
+              title: 'Título del cupón',
+              message:
+                'Es lo primero que verá el cliente. Sé claro y atractivo.\n\nEjemplos:\n• 2x1 en cafés de 3pm a 6pm\n• 15% de descuento en combos\n• Postre gratis en tu primera visita',
+            }}
+          />
           <TextInput
             style={styles.input}
             value={title}
@@ -140,7 +147,14 @@ export default function NewCoupon() {
             placeholder="Café al 2x1 de 3pm a 6pm"
             maxLength={80}
           />
-          <Label text="Descripción (opcional)" />
+          <Label
+            text="Descripción (opcional)"
+            hint={{
+              title: 'Descripción',
+              message:
+                'Detalla condiciones o restricciones del cupón.\n\nEjemplo:\n• Válido solo en sucursal centro\n• No acumulable con otras promociones\n• Aplica en compras mayores a $100',
+            }}
+          />
           <TextInput
             style={[styles.input, styles.multiline]}
             value={description}
@@ -154,7 +168,14 @@ export default function NewCoupon() {
 
       {step === 2 && (
         <View style={styles.block}>
-          <Label text="Tipo de descuento" />
+          <Label
+            text="Tipo de descuento"
+            hint={{
+              title: 'Tipo de descuento',
+              message:
+                '• % de descuento: porcentaje del total (ej: 15% off)\n• Monto fijo: descuento en pesos (ej: $50 off)\n• 2x1: el cliente paga uno y se lleva dos\n• Gratis: el producto es gratuito',
+            }}
+          />
           <View style={styles.chips}>
             {DISCOUNT_TYPES.map((d) => (
               <Pressable
@@ -170,7 +191,14 @@ export default function NewCoupon() {
               </Pressable>
             ))}
           </View>
-          <Label text={discountType === 'percent' ? 'Porcentaje (%)' : 'Valor'} />
+          <Label
+            text={discountType === 'percent' ? 'Porcentaje (%)' : 'Valor'}
+            hint={{
+              title: 'Valor del descuento',
+              message:
+                'Si elegiste %, escribe solo el número (ej: 15 para 15%).\nSi elegiste monto fijo, escribe la cantidad en pesos (ej: 50 para $50 de descuento).',
+            }}
+          />
           <TextInput
             style={styles.input}
             value={discountValue}
@@ -179,7 +207,14 @@ export default function NewCoupon() {
           />
           {needsReferencia && (
             <>
-              <Label text="Precio de referencia (obligatorio para 2x1/Gratis)" />
+              <Label
+                text="Precio de referencia (obligatorio para 2x1/Gratis)"
+                hint={{
+                  title: 'Precio de referencia',
+                  message:
+                    'El precio normal del producto para que el cliente sepa cuánto ahorra.\n\nEjemplo: si ofreces 2x1 en café de $45, escribe 45.',
+                }}
+              />
               <TextInput
                 style={styles.input}
                 value={precioRef}
@@ -193,23 +228,51 @@ export default function NewCoupon() {
 
       {step === 3 && (
         <View style={styles.block}>
-          <Label text="Fecha de inicio (YYYY-MM-DD)" />
+          <Label
+            text="Fecha de inicio (YYYY-MM-DD)"
+            hint={{
+              title: 'Fecha de inicio',
+              message:
+                'El día desde el cual el cupón estará disponible para los clientes.\n\nFormato: AAAA-MM-DD (ej: 2026-05-17)',
+            }}
+          />
           <TextInput style={styles.input} value={startDate} onChangeText={setStartDate} />
-          <Label text="Fecha de fin (YYYY-MM-DD)" />
+          <Label
+            text="Fecha de fin (YYYY-MM-DD)"
+            hint={{
+              title: 'Fecha de fin',
+              message:
+                'El último día en que el cupón se puede canjear. Después de esta fecha se desactiva automáticamente.\n\nFormato: AAAA-MM-DD',
+            }}
+          />
           <TextInput style={styles.input} value={endDate} onChangeText={setEndDate} />
         </View>
       )}
 
       {step === 4 && (
         <View style={styles.block}>
-          <Label text="Usos por persona" />
+          <Label
+            text="Usos por persona"
+            hint={{
+              title: 'Usos por persona',
+              message:
+                '¿Cuántas veces puede usar este cupón cada cliente?\n\n• 1 = solo una vez por persona\n• 3 = hasta 3 veces por persona',
+            }}
+          />
           <TextInput
             style={styles.input}
             value={usagePerUser}
             onChangeText={setUsagePerUser}
             keyboardType="number-pad"
           />
-          <Label text="Total de usos disponibles" />
+          <Label
+            text="Total de usos disponibles"
+            hint={{
+              title: 'Total de usos disponibles',
+              message:
+                '¿Cuántos canjes TOTALES permite este cupón entre todos los clientes?\n\nEjemplo: 50 significa que los primeros 50 clientes que lo canjeen lo aprovechan.',
+            }}
+          />
           <TextInput
             style={styles.input}
             value={totalLimit}
@@ -225,13 +288,32 @@ export default function NewCoupon() {
             label="Transferible (solo Premium)"
             value={transferable}
             onChange={setTransferable}
+            hint={{
+              title: 'Transferible',
+              message:
+                'Si está activado, el cliente puede compartir este cupón con otra persona. Útil para marketing viral.\n\n⭐ Función exclusiva del plan Premium.',
+            }}
           />
           <Toggle
             label="Acumulable con otros cupones"
             value={accumulable}
             onChange={setAccumulable}
+            hint={{
+              title: 'Acumulable',
+              message:
+                'Si está activado, el cliente puede usar este cupón junto con otros cupones en la misma compra.',
+            }}
           />
-          <Toggle label="Uso único por persona" value={singleUse} onChange={setSingleUse} />
+          <Toggle
+            label="Uso único por persona"
+            value={singleUse}
+            onChange={setSingleUse}
+            hint={{
+              title: 'Uso único',
+              message:
+                "Si está activado, cada persona solo puede canjear este cupón una sola vez, sin importar lo que diga 'usos por persona'.",
+            }}
+          />
         </View>
       )}
 
@@ -253,21 +335,51 @@ export default function NewCoupon() {
   );
 }
 
-function Label({ text }: { text: string }) {
-  return <Text style={styles.label}>{text}</Text>;
+function HelpTip({ title, message }: { title: string; message: string }) {
+  return (
+    <Pressable
+      onPress={() => Alert.alert(title, message)}
+      style={{ marginLeft: spacing.xs }}
+      hitSlop={8}
+    >
+      <Text style={{ color: colors.secondary, fontSize: fontSize.md, fontWeight: '800' }}>
+        ⓘ
+      </Text>
+    </Pressable>
+  );
+}
+
+function Label({
+  text,
+  hint,
+}: {
+  text: string;
+  hint?: { title: string; message: string };
+}) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Text style={styles.label}>{text}</Text>
+      {hint && <HelpTip title={hint.title} message={hint.message} />}
+    </View>
+  );
 }
 function Toggle({
   label,
   value,
   onChange,
+  hint,
 }: {
   label: string;
   value: boolean;
   onChange: (v: boolean) => void;
+  hint?: { title: string; message: string };
 }) {
   return (
     <View style={styles.toggleRow}>
-      <Text style={styles.toggleLabel}>{label}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: spacing.md }}>
+        <Text style={styles.toggleLabel}>{label}</Text>
+        {hint && <HelpTip title={hint.title} message={hint.message} />}
+      </View>
       <Switch
         value={value}
         onValueChange={onChange}
