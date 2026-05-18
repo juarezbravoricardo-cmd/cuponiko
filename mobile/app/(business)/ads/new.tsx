@@ -81,7 +81,7 @@ export default function BusinessAdNew() {
   const [startDate, setStartDate] = useState(todayISO());
   const [endDate, setEndDate] = useState(plusDaysISO(7));
   const [redemptionLimit, setRedemptionLimit] = useState('100');
-  const [costType, setCostType] = useState<CostType>('cpc');
+  const [costType, setCostType] = useState<CostType>('flat');
   const [costValue, setCostValue] = useState('5');
 
   const [submitting, setSubmitting] = useState(false);
@@ -295,6 +295,7 @@ export default function BusinessAdNew() {
       </Section>
 
       <Section title="Costo">
+        {/* CPC deshabilitado para v1.0 — descomentar cuando se active
         <ChipsRow
           options={COST_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
           value={costType}
@@ -303,11 +304,12 @@ export default function BusinessAdNew() {
         <Text style={styles.hint}>
           {COST_OPTIONS.find((o) => o.value === costType)?.hint}
         </Text>
+        */}
         <View>
-          <SectionLabel text="Costo de la campaña" hint={{ title: "Costo de la campaña", message: "Monto en pesos mexicanos que pagarás por esta campaña publicitaria. El cobro se realiza al crear el anuncio." }} />
+          <SectionLabel text="Costo de la campaña (MXN)" hint={{ title: "Costo de la campaña", message: "Monto en pesos mexicanos que pagarás por esta campaña publicitaria. El cobro se realiza al crear el anuncio.\n\nEl costo depende de cuánta visibilidad quieres. A mayor presupuesto, más impresiones." }} />
           <TextField
             label=""
-            placeholder={costType === 'cpc' ? '5' : '500'}
+            placeholder="500"
             value={costValue}
             onChangeText={setCostValue}
             keyboardType="numeric"
