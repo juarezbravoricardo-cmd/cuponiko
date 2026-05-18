@@ -4,6 +4,8 @@
 
 import { api } from './api';
 
+export type AdPackage = 'basico' | 'destacado' | 'premium';
+
 export type CreateAdInput = {
   title: string;
   description?: string;
@@ -11,17 +13,17 @@ export type CreateAdInput = {
   discount_type: 'percent' | 'fixed' | '2x1' | 'free';
   discount_value: number;
   precio_referencia?: number | null;
-  start_date: string; // YYYY-MM-DD
-  end_date: string;   // YYYY-MM-DD
   redemption_limit: number;
-  cost_type: 'cpc' | 'flat';
-  cost_value: number;
+  package: AdPackage;
 };
 
 export type CreateAdResponse = {
   ad_id: number;
   coupon_id: number;
   message: string;
+  checkout_url?: string;
+  package?: string;
+  price_mxn?: number;
 };
 
 export async function uploadAdImage(uri: string): Promise<string> {
@@ -52,7 +54,7 @@ export interface MyAd {
   coupon_id: number;
   title: string;
   image_url: string;
-  status: 'active' | 'paused' | 'expired';
+  status: 'active' | 'paused' | 'expired' | 'pending_payment';
   start_date: string;
   end_date: string;
   impressions: number;

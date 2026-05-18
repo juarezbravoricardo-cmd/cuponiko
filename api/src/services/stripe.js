@@ -116,8 +116,44 @@ function verifyWebhookSignature(rawBody, signature) {
   }
 }
 
+async function createAdCheckoutSession({ businessId, email, customerId, amountMXN, adId, packageKey, packageDays }) {
+  if (env.MOCK_EXTERNAL_SERVICES) {
+    const id = `cs_test_mock_ad_${adId}_${Date.now()}`;
+    return { id, url: `https://mock.checkout.cuponiko/${id}`, customer_id: customerId || `cus_mock_${businessId}` };
+  }
+  const stripe = getClient();
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    payment_method_types: ['card'],
+    line_items: [{
+      price_data: {
+        currency: 'mxn',
+        unit_amount: Math.round(amountMXN * 100),
+        product_data: {
+          name: `Anuncio Cuponiko — Paquete ${packageKey}`,
+          description: `Campaña publicitaria de ${packageDays} días en el mapa de Cuponiko`,
+        },
+      },
+      quantity: 1,
+    }],
+    success_url: env.STRIPE_SUCCESS_URL,
+    cancel_url: env.STRIPE_CANCEL_URL,
+    customer: customerId || undefined,
+    customer_email: customerId ? undefined : email,
+    metadata: {
+      business_id: String(businessId),
+      type: 'ad_payment',
+      ad_id: String(adId),
+      package_key: packageKey,
+      package_days: String(packageDays),
+    },
+  });
+  return { id: session.id, url: session.url, customer_id: session.customer || null };
+}
+
 module.exports = {
   createCheckoutSession,
+  createAdCheckoutSession,
   verifyWebhookSignature,
   PRICE_IDS,
 };

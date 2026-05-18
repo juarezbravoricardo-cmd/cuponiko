@@ -11,7 +11,7 @@
  *           coupon → anuncio → coupon.ad_id. Si cualquiera falla, ROLLBACK
  *           total (T-311).
  *  - AP-08: mensajes literales del contrato.
- *  - AP-13: el cupón nace en estado 'active' (max una transición posterior).
+ *  - AP-13: el cupón nace en estado 'draft' (se activa por webhook de Stripe).
  */
 
 const { query, withTransaction } = require('../config/db');
@@ -22,20 +22,13 @@ const {
 } = require('../middleware/planChecker');
 const { invalidateBusinessCaches } = require('./cacheService');
 
-const COST_TYPES = new Set(['cpc', 'flat']);
-const DISCOUNT_TYPES = new Set(['percent', 'fixed', '2x1', 'free']);
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const AD_PACKAGES = {
+  basico:    { days: 7,  price_mxn: 99,  label: 'Básico' },
+  destacado: { days: 15, price_mxn: 199, label: 'Destacado' },
+  premium:   { days: 30, price_mxn: 399, label: 'Premium' },
+};
 
-function parseDateYmd(s, label) {
-  if (typeof s !== 'string' || !ISO_DATE_RE.test(s)) {
-    throw new AppError(400, 'VALIDATION_ERROR', `${label} inválida.`);
-  }
-  const d = new Date(`${s}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) {
-    throw new AppError(400, 'VALIDATION_ERROR', `${label} inválida.`);
-  }
-  return d;
-}
+const DISCOUNT_TYPES = new Set(['percent', 'fixed', '2x1', 'free']);
 
 function todayUtcYmd() {
   const d = new Date();
@@ -101,27 +94,18 @@ async function createAd(userId, body) {
     throw new AppError(400, 'VALIDATION_ERROR', 'Define un límite de canjes para el anuncio.');
   }
 
-  // V3 — fechas
-  const start = parseDateYmd(b.start_date, 'Fecha de inicio');
-  const end = parseDateYmd(b.end_date, 'Fecha de fin');
-  const today = parseDateYmd(todayUtcYmd(), 'Fecha de inicio');
-  if (start < today || end <= start) {
-    throw new AppError(400, 'VALIDATION_ERROR', 'Fechas inválidas.');
-  }
-
-  // V costo
-  if (!COST_TYPES.has(b.cost_type)) {
-    throw new AppError(400, 'VALIDATION_ERROR', 'Tipo de costo inválido.');
-  }
-  const costValue = Number(b.cost_value);
-  if (!Number.isFinite(costValue) || costValue <= 0) {
-    throw new AppError(400, 'VALIDATION_ERROR', 'El costo del anuncio debe ser mayor a 0.');
+  // V — paquete válido
+  const pkg = AD_PACKAGES[b.package];
+  if (!pkg) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'Selecciona un paquete válido: basico, destacado o premium.');
   }
 
   return withTransaction(async (client) => {
     // V1 — businesses.status = 'active'
     const biz = await getBusinessByUserId(client, userId);
     assertBusinessActive(biz);
+
+    const todayStr = todayUtcYmd();
 
     // PASO 1 — INSERT cupón (is_ad_exclusive=TRUE, accumulable=FALSE, transferable=FALSE)
     const couponIns = await client.query(
@@ -130,7 +114,7 @@ async function createAd(userId, body) {
          start_date, end_date, usage_limit_per_user, total_usage_limit,
          transferable, accumulable, max_accumulated_discount, max_coupons_per_tx,
          single_use, is_ad_exclusive, status
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8, 1, $9, FALSE, FALSE, 70, 2, TRUE, TRUE, 'active')
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$7, 1, $8, FALSE, FALSE, 70, 2, TRUE, TRUE, 'draft')
        RETURNING id`,
       [
         biz.id,
@@ -139,8 +123,7 @@ async function createAd(userId, body) {
         b.discount_type,
         discountValue,
         precioReferencia,
-        b.start_date,
-        b.end_date,
+        todayStr,       // placeholder start_date y end_date (se sobreescribe al pagar)
         redemptionLimit,
       ]
     );
@@ -157,16 +140,14 @@ async function createAd(userId, body) {
       `INSERT INTO anuncios_pagados (
          business_id, coupon_id, image_url, start_date, end_date,
          cost_type, cost_value, redemption_limit, impressions, clicks, status
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, 0, 'active')
+       ) VALUES ($1, $2, $3, $4, $4, 'flat', $5, $6, 0, 0, 'pending_payment')
        RETURNING id`,
       [
         biz.id,
         couponId,
         b.image_url,
-        b.start_date,
-        b.end_date,
-        b.cost_type,
-        costValue,
+        todayStr,          // placeholder (se sobreescribe al pagar)
+        pkg.price_mxn,
         redemptionLimit,
       ]
     );
@@ -182,10 +163,28 @@ async function createAd(userId, body) {
     // al publicar un nuevo anuncio + cupón exclusivo.
     invalidateBusinessCaches(biz.id);
 
+    // PASO 4 — Crear checkout session de Stripe
+    const { createAdCheckoutSession } = require('./stripe');
+    const userRes = await client.query('SELECT email FROM users WHERE id = $1', [userId]);
+    const userEmail = userRes.rows[0].email;
+
+    const checkout = await createAdCheckoutSession({
+      businessId: biz.id,
+      email: userEmail,
+      customerId: biz.stripe_customer_id || null,
+      amountMXN: pkg.price_mxn,
+      adId,
+      packageKey: b.package,
+      packageDays: pkg.days,
+    });
+
     return {
       ad_id: adId,
       coupon_id: couponId,
-      message: 'Anuncio publicado con éxito.',
+      message: `Anuncio creado (${pkg.label}). Completa el pago de $${pkg.price_mxn} MXN para activarlo.`,
+      checkout_url: checkout.url,
+      package: b.package,
+      price_mxn: pkg.price_mxn,
     };
   });
 }

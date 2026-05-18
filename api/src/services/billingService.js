@@ -120,17 +120,42 @@ async function handleWebhook({ rawBody, signature }) {
 
 async function handleCheckoutCompleted(event) {
   const session = event.data?.object || {};
-  const businessId = Number(session.metadata?.business_id);
+  const metadata = session.metadata || {};
+  const businessId = Number(metadata.business_id);
   const subscriptionId = session.subscription || null;
   const customerId = session.customer || null;
-  // Pricing v2: leer billing_interval del metadata; default 'monthly' si no viene (edge case).
-  const rawInterval = session.metadata?.billing_interval;
-  const billingInterval = rawInterval === 'quarterly' ? 'quarterly' : 'monthly';
 
   if (!businessId) {
     logger.warn('stripe_checkout_no_business_id', { session_id: session.id });
     return;
   }
+
+  // ── Pago de anuncio ──
+  if (metadata.type === 'ad_payment' && metadata.ad_id) {
+    const adId = Number(metadata.ad_id);
+    const days = Number(metadata.package_days) || 7;
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + days);
+    const startStr = startDate.toISOString().slice(0, 10);
+    const endStr = endDate.toISOString().slice(0, 10);
+
+    await query(
+      `UPDATE anuncios_pagados SET status = 'active', start_date = $2, end_date = $3 WHERE id = $1 AND status = 'pending_payment'`,
+      [adId, startStr, endStr]
+    );
+    await query(
+      `UPDATE coupons SET status = 'active', start_date = $2, end_date = $3 FROM anuncios_pagados ap WHERE coupons.id = ap.coupon_id AND ap.id = $1`,
+      [adId, startStr, endStr]
+    );
+    console.log(`[webhook] Ad ${adId} activated: ${startStr} → ${endStr} (${days} days)`);
+    return;
+  }
+  // ── Resto de la lógica de suscripción existente (NO TOCAR) ──
+
+  // Pricing v2: leer billing_interval del metadata; default 'monthly' si no viene (edge case).
+  const rawInterval = metadata.billing_interval;
+  const billingInterval = rawInterval === 'quarterly' ? 'quarterly' : 'monthly';
 
   await withTransaction(async (client) => {
     const upd = await client.query(
