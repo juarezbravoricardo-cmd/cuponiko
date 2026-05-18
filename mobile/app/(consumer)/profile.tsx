@@ -162,7 +162,20 @@ export default function ConsumerProfile() {
             <Button
               title="Eliminar mi cuenta"
               variant="ghost"
-              onPress={() => setDeleteStep('request')}
+              onPress={() => {
+                Alert.alert(
+                  '¿Estás seguro?',
+                  'Eliminar tu cuenta es irreversible. Se perderán todos tus datos, cupones, tarjetas de lealtad y historial. Esta acción no se puede deshacer.',
+                  [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                      text: 'Sí, quiero eliminar mi cuenta',
+                      style: 'destructive',
+                      onPress: () => setDeleteStep('request'),
+                    },
+                  ]
+                );
+              }}
             />
           </>
         )}

@@ -204,7 +204,24 @@ export default function BusinessProfile() {
             <Text style={styles.dangerHint}>
               Eliminar la cuenta suspende tu negocio y caduca cupones activos. Es irreversible.
             </Text>
-            <Button title="Eliminar mi cuenta" variant="ghost" onPress={() => setDeleteStep('request')} />
+            <Button
+              title="Eliminar mi cuenta"
+              variant="ghost"
+              onPress={() => {
+                Alert.alert(
+                  '¿Estás seguro?',
+                  'Eliminar tu cuenta es irreversible. Se perderán todos tus datos, cupones, tarjetas de lealtad y historial. Esta acción no se puede deshacer.',
+                  [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                      text: 'Sí, quiero eliminar mi cuenta',
+                      style: 'destructive',
+                      onPress: () => setDeleteStep('request'),
+                    },
+                  ]
+                );
+              }}
+            />
           </>
         )}
         {deleteStep === 'request' && (
