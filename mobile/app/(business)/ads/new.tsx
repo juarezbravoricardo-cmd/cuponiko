@@ -49,6 +49,23 @@ function plusDaysISO(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+function HelpTip({ title, message }: { title: string; message: string }) {
+  return (
+    <Pressable onPress={() => Alert.alert(title, message)} style={{ marginLeft: spacing.xs }}>
+      <Text style={{ color: colors.secondary, fontSize: fontSize.md, fontWeight: '800' }}>ⓘ</Text>
+    </Pressable>
+  );
+}
+
+function SectionLabel({ text, hint }: { text: string; hint?: { title: string; message: string } }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+      <Text style={{ fontSize: fontSize.sm, fontWeight: '700', color: colors.textPrimary }}>{text}</Text>
+      {hint && <HelpTip title={hint.title} message={hint.message} />}
+    </View>
+  );
+}
+
 export default function BusinessAdNew() {
   const router = useRouter();
 
@@ -124,83 +141,110 @@ export default function BusinessAdNew() {
       </Text>
 
       <Section title="Contenido">
-        <TextField
-          label="Título"
-          placeholder="Ej. 2x1 en café latte"
-          value={title}
-          onChangeText={setTitle}
-          maxLength={80}
-          error={fieldErrors.title}
-        />
-        <TextField
-          label="Descripción"
-          placeholder="Detalles que verá el cliente"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          maxLength={200}
-        />
-        <TextField
-          label="URL de imagen"
-          placeholder="https://..."
-          value={imageUrl}
-          onChangeText={setImageUrl}
-          autoCapitalize="none"
-          error={fieldErrors.imageUrl}
-        />
+        <View>
+          <SectionLabel text="Título" hint={{ title: "Título del anuncio", message: "Es lo que verá el consumidor en el carrusel del mapa. Hazlo llamativo y directo.\n\nEjemplos:\n• 2x1 en café latte esta semana\n• Corte de cabello $99 solo hoy\n• Pizza familiar + refresco gratis" }} />
+          <TextField
+            label=""
+            placeholder="Ej. 2x1 en café latte"
+            value={title}
+            onChangeText={setTitle}
+            maxLength={80}
+            error={fieldErrors.title}
+          />
+        </View>
+        <View>
+          <SectionLabel text="Descripción" hint={{ title: "Descripción (opcional)", message: "Detalla condiciones o restricciones de tu promoción.\n\nEjemplos:\n• Válido solo en sucursal centro\n• No acumulable con otras promos\n• Hasta agotar existencias" }} />
+          <TextField
+            label=""
+            placeholder="Detalles que verá el cliente"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            maxLength={200}
+          />
+        </View>
+        <View>
+          <SectionLabel text="URL de imagen" hint={{ title: "Imagen del anuncio", message: "Sube una foto atractiva de tu producto o promoción. Se mostrará en el carrusel del mapa.\n\nRecomendaciones:\n• Tamaño ideal: 1280x720 px\n• Formato: JPG, PNG o WebP\n• Buena iluminación y sin texto excesivo" }} />
+          <TextField
+            label=""
+            placeholder="https://..."
+            value={imageUrl}
+            onChangeText={setImageUrl}
+            autoCapitalize="none"
+            error={fieldErrors.imageUrl}
+          />
+        </View>
       </Section>
 
       <Section title="Descuento">
-        <ChipsRow
-          options={DISCOUNT_OPTIONS}
-          value={discountType}
-          onChange={setDiscountType}
-        />
-        <TextField
-          label={discountType === 'percent' ? 'Porcentaje' : 'Valor'}
-          placeholder="10"
-          value={discountValue}
-          onChangeText={setDiscountValue}
-          keyboardType="numeric"
-          error={fieldErrors.discountValue}
-        />
-        {requiresPrecio && (
-          <TextField
-            label="Precio de referencia (MXN)"
-            placeholder="120"
-            value={precioRef}
-            onChangeText={setPrecioRef}
-            keyboardType="numeric"
-            error={fieldErrors.precioRef}
+        <View>
+          <SectionLabel text="Tipo de descuento" hint={{ title: "Tipo de descuento", message: "Elige cómo se aplica el descuento:\n\n• % off → Porcentaje (ej: 15% de descuento)\n• $ off → Monto fijo en pesos (ej: $50 menos)\n• 2x1 → Paga uno, llévate dos\n• Gratis → Producto sin costo" }} />
+          <ChipsRow
+            options={DISCOUNT_OPTIONS}
+            value={discountType}
+            onChange={setDiscountType}
           />
+        </View>
+        <View>
+          <SectionLabel text="Valor del descuento" hint={{ title: "Valor del descuento", message: "Si elegiste %, escribe solo el número (ej: 15 para 15%).\nSi elegiste $ off, escribe la cantidad en pesos (ej: 50 para $50 de descuento).\nPara 2x1 y Gratis, pon 1." }} />
+          <TextField
+            label=""
+            placeholder="10"
+            value={discountValue}
+            onChangeText={setDiscountValue}
+            keyboardType="numeric"
+            error={fieldErrors.discountValue}
+          />
+        </View>
+        {requiresPrecio && (
+          <View>
+            <SectionLabel text="Precio de referencia" hint={{ title: "Precio de referencia", message: "El precio normal del producto para que el cliente vea cuánto ahorra.\n\nEjemplo: si tu café cuesta $45 y ofreces 2x1, escribe 45." }} />
+            <TextField
+              label=""
+              placeholder="120"
+              value={precioRef}
+              onChangeText={setPrecioRef}
+              keyboardType="numeric"
+              error={fieldErrors.precioRef}
+            />
+          </View>
         )}
       </Section>
 
       <Section title="Vigencia y límite">
-        <TextField
-          label="Inicio (YYYY-MM-DD)"
-          placeholder="2026-05-12"
-          value={startDate}
-          onChangeText={setStartDate}
-          autoCapitalize="none"
-          error={fieldErrors.startDate}
-        />
-        <TextField
-          label="Fin (YYYY-MM-DD)"
-          placeholder="2026-05-19"
-          value={endDate}
-          onChangeText={setEndDate}
-          autoCapitalize="none"
-          error={fieldErrors.endDate}
-        />
-        <TextField
-          label="Límite de redenciones totales"
-          placeholder="100"
-          value={redemptionLimit}
-          onChangeText={setRedemptionLimit}
-          keyboardType="numeric"
-          error={fieldErrors.redemptionLimit}
-        />
+        <View>
+          <SectionLabel text="Fecha de inicio" hint={{ title: "Fecha de inicio", message: "Desde qué día estará visible tu anuncio en el mapa.\n\nFormato: AAAA-MM-DD (ej: 2026-05-19)" }} />
+          <TextField
+            label=""
+            placeholder="2026-05-12"
+            value={startDate}
+            onChangeText={setStartDate}
+            autoCapitalize="none"
+            error={fieldErrors.startDate}
+          />
+        </View>
+        <View>
+          <SectionLabel text="Fecha de vencimiento" hint={{ title: "Fecha de vencimiento", message: "Último día en que tu anuncio aparecerá en el mapa. Después se desactiva automáticamente.\n\nFormato: AAAA-MM-DD" }} />
+          <TextField
+            label=""
+            placeholder="2026-05-19"
+            value={endDate}
+            onChangeText={setEndDate}
+            autoCapitalize="none"
+            error={fieldErrors.endDate}
+          />
+        </View>
+        <View>
+          <SectionLabel text="Límite de redenciones" hint={{ title: "Límite de redenciones", message: "¿Cuántos clientes en total pueden canjear esta oferta?\n\nEjemplo: 100 = los primeros 100 clientes que vean tu anuncio y canjeen." }} />
+          <TextField
+            label=""
+            placeholder="100"
+            value={redemptionLimit}
+            onChangeText={setRedemptionLimit}
+            keyboardType="numeric"
+            error={fieldErrors.redemptionLimit}
+          />
+        </View>
       </Section>
 
       <Section title="Costo">
@@ -212,14 +256,17 @@ export default function BusinessAdNew() {
         <Text style={styles.hint}>
           {COST_OPTIONS.find((o) => o.value === costType)?.hint}
         </Text>
-        <TextField
-          label={costType === 'cpc' ? 'MXN por clic' : 'MXN total'}
-          placeholder={costType === 'cpc' ? '5' : '500'}
-          value={costValue}
-          onChangeText={setCostValue}
-          keyboardType="numeric"
-          error={fieldErrors.costValue}
-        />
+        <View>
+          <SectionLabel text="Costo de la campaña" hint={{ title: "Costo de la campaña", message: "Monto en pesos mexicanos que pagarás por esta campaña publicitaria. El cobro se realiza al crear el anuncio." }} />
+          <TextField
+            label=""
+            placeholder={costType === 'cpc' ? '5' : '500'}
+            value={costValue}
+            onChangeText={setCostValue}
+            keyboardType="numeric"
+            error={fieldErrors.costValue}
+          />
+        </View>
       </Section>
 
       {!!error && <Text style={styles.error}>{error}</Text>}
