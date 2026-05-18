@@ -31,12 +31,14 @@ const STATUS_COLOR: Record<MyAd['status'], string> = {
   active: colors.success,
   paused: colors.warning,
   expired: colors.textMuted,
+  pending_payment: colors.secondary,
 };
 
 const STATUS_LABEL: Record<MyAd['status'], string> = {
   active: 'Activo',
   paused: 'Pausado',
   expired: 'Vencido',
+  pending_payment: '⏳ Pendiente de pago',
 };
 
 export default function BusinessAdsList() {
