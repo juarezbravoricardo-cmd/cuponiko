@@ -246,6 +246,16 @@ export async function fetchInstanceStatus(instanceId: number): Promise<InstanceS
   return r.data.data;
 }
 
+export interface ConsumerSavings {
+  total_saved: number;
+  redemption_count: number;
+}
+
+export async function fetchSavings(): Promise<ConsumerSavings> {
+  const r = await api.get('/api/wallet/savings');
+  return r.data.data;
+}
+
 export async function fetchWallet(tab: 'active' | 'history'): Promise<WalletCoupon[]> {
   const r = await api.get('/api/wallet/coupons', { params: { tab } });
   return r.data.data.coupons;

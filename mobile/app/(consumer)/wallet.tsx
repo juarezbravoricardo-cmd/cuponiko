@@ -23,7 +23,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '@/components/ScreenContainer';
-import { fetchWallet, type WalletCoupon } from '@/services/couponsApi';
+import { fetchWallet, fetchSavings, type WalletCoupon, type ConsumerSavings } from '@/services/couponsApi';
 import { colors, fontSize, radii, spacing } from '@/utils/theme';
 import { formatDiscount, formatShortDate } from '@/utils/format';
 
@@ -36,6 +36,7 @@ export default function Wallet() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savings, setSavings] = useState<ConsumerSavings | null>(null);
 
   const load = useCallback(
     async (t: Tab) => {
@@ -55,6 +56,10 @@ export default function Wallet() {
     load(tab).finally(() => setLoading(false));
   }, [tab, load]);
 
+  useEffect(() => {
+    fetchSavings().then(setSavings).catch(() => {});
+  }, []);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await load(tab);
@@ -67,6 +72,14 @@ export default function Wallet() {
         <TabBtn label="Activos" active={tab === 'active'} onPress={() => setTab('active')} />
         <TabBtn label="Historial" active={tab === 'history'} onPress={() => setTab('history')} />
       </View>
+
+      {savings && savings.redemption_count > 0 && (
+        <View style={styles.savingsBanner}>
+          <Text style={styles.savingsBannerTxt}>
+            💰 Has ahorrado ${savings.total_saved.toFixed(2)} MXN con {savings.redemption_count} {savings.redemption_count === 1 ? 'cupón' : 'cupones'}
+          </Text>
+        </View>
+      )}
 
       {loading ? (
         <ActivityIndicator color={colors.primary} />
@@ -187,4 +200,17 @@ const styles = StyleSheet.create({
   meta: { color: colors.textMuted, fontSize: fontSize.xs, marginTop: spacing.xs },
   chevron: { fontSize: fontSize.xxl, color: colors.textMuted },
   muted: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.lg },
+  savingsBanner: {
+    backgroundColor: colors.bgMuted,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    alignItems: 'center',
+  },
+  savingsBannerTxt: {
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: fontSize.sm,
+    textAlign: 'center',
+  },
 });

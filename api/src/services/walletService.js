@@ -108,6 +108,22 @@ async function getInstanceStatus(consumerId, instanceId) {
   };
 }
 
+async function getSavings(consumerId) {
+  const r = await query(
+    `SELECT
+       COALESCE(SUM(discount_applied), 0)::numeric AS total_saved,
+       COUNT(*)::int AS redemption_count
+     FROM redemptions
+     WHERE consumer_id = $1`,
+    [consumerId]
+  );
+  const row = r.rows[0];
+  return {
+    total_saved: Number(row.total_saved),
+    redemption_count: row.redemption_count,
+  };
+}
+
 function shape(row) {
   return {
     coupon_instance_id: Number(row.instance_id),
@@ -142,4 +158,4 @@ function shape(row) {
   };
 }
 
-module.exports = { getWallet, getInstanceStatus };
+module.exports = { getWallet, getInstanceStatus, getSavings };

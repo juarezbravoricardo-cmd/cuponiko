@@ -32,4 +32,15 @@ router.get(
   })
 );
 
+// WALLET-03: total ahorrado del consumidor
+router.get(
+  '/savings',
+  jwtVerify,
+  requireRole('consumer'),
+  asyncHandler(async (req, res) => {
+    const data = await wallet.getSavings(req.user.id);
+    res.status(200).json({ data });
+  })
+);
+
 module.exports = router;
