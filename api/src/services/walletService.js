@@ -111,16 +111,24 @@ async function getInstanceStatus(consumerId, instanceId) {
 async function getSavings(consumerId) {
   const r = await query(
     `SELECT
-       COALESCE(SUM(discount_applied), 0)::numeric AS total_saved,
-       COUNT(*)::int AS redemption_count
-     FROM redemptions
-     WHERE consumer_id = $1`,
+       COALESCE(SUM(r.discount_applied), 0)::numeric AS total_saved,
+       COUNT(r.id)::int AS redemption_count
+     FROM redemptions r
+     WHERE r.consumer_id = $1`,
+    [consumerId]
+  );
+  const loyaltyR = await query(
+    `SELECT COUNT(*)::int AS loyalty_cards_completed
+     FROM consumer_loyalty
+     WHERE consumer_id = $1 AND reward_redeemed = true`,
     [consumerId]
   );
   const row = r.rows[0];
+  const loyaltyRow = loyaltyR.rows[0];
   return {
     total_saved: Number(row.total_saved),
     redemption_count: row.redemption_count,
+    loyalty_cards_completed: loyaltyRow.loyalty_cards_completed,
   };
 }
 

@@ -18,9 +18,11 @@
  * permisos de nuevo.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   FlatList,
   Image,
   Platform,
@@ -37,8 +39,10 @@ import { useGeoLocation } from '@/hooks/useGeoLocation';
 import {
   fetchActiveAds,
   fetchNearby,
+  fetchSavings,
   registerAdClick,
   type Ad,
+  type ConsumerSavings,
   type NearbyBusiness,
 } from '@/services/couponsApi';
 import { useAuth } from '@/stores/authStore';
@@ -72,6 +76,10 @@ export default function ConsumerHome() {
   const [radius, setRadius] = useState<number>(5000);
   const [category, setCategory] = useState<string | null>(null);
 
+  const [savings, setSavings] = useState<ConsumerSavings | null>(null);
+  const animatedValue = useRef(new Animated.Value(0)).current;
+  const [displayAmount, setDisplayAmount] = useState(0);
+
   const load = useCallback(async () => {
     if (!coords) return;
     setLoading(true);
@@ -98,6 +106,30 @@ export default function ConsumerHome() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    fetchSavings()
+      .then((s) => {
+        setSavings(s);
+        if (s.total_saved > 0) {
+          // Animación del contador: 0 → total_saved en 1.5 segundos
+          animatedValue.setValue(0);
+          Animated.timing(animatedValue, {
+            toValue: s.total_saved,
+            duration: 1500,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          }).start();
+
+          // Listener para actualizar el display
+          const listenerId = animatedValue.addListener(({ value }) => {
+            setDisplayAmount(value);
+          });
+          return () => animatedValue.removeListener(listenerId);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const initialRegion = useMemo(() => {
     if (!coords) return undefined;
@@ -134,6 +166,18 @@ export default function ConsumerHome() {
           <Text style={styles.ghostChipTxt}>Salir</Text>
         </Pressable>
       </View>
+
+      {savings && (savings.redemption_count > 0 || savings.loyalty_cards_completed > 0) && (
+        <View style={styles.savingsCard}>
+          <Text style={styles.savingsIntro}>Con Cuponiko has ahorrado hasta el día de hoy:</Text>
+          <Text style={styles.savingsAmount}>
+            ${displayAmount.toFixed(2)} MXN
+          </Text>
+          <Text style={styles.savingsDetail}>
+            por canjear {savings.redemption_count} {savings.redemption_count === 1 ? 'cupón' : 'cupones'} y {savings.loyalty_cards_completed} {savings.loyalty_cards_completed === 1 ? 'tarjeta de lealtad' : 'tarjetas de lealtad'}
+          </Text>
+        </View>
+      )}
 
       {geoStatus === 'loading' || !coords ? (
         <View style={styles.center}>
@@ -459,4 +503,31 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   muted: { color: colors.textMuted, textAlign: 'center' },
+  savingsCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    backgroundColor: colors.primary,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  savingsIntro: {
+    fontSize: fontSize.sm,
+    color: '#FFFFFF',
+    opacity: 0.9,
+    textAlign: 'center',
+  },
+  savingsAmount: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  savingsDetail: {
+    fontSize: fontSize.xs,
+    color: '#FFFFFF',
+    opacity: 0.8,
+    textAlign: 'center',
+  },
 });

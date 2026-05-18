@@ -28,7 +28,6 @@ import { useLoyalty } from '@/stores/loyaltyStore';
 import { extractApiError } from '@/services/api';
 import { registerPushToken } from '@/services/notificationsApi';
 import { confirmDelete, requestDelete } from '@/services/accountApi';
-import { fetchSavings, type ConsumerSavings } from '@/services/couponsApi';
 import { colors, fontSize, radii, spacing } from '@/utils/theme';
 
 type DeleteStep = 'idle' | 'request' | 'confirm';
@@ -48,14 +47,6 @@ export default function ConsumerProfile() {
   const [deleteCode, setDeleteCode] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  const [savings, setSavings] = useState<ConsumerSavings | null>(null);
-
-  useEffect(() => {
-    fetchSavings()
-      .then(setSavings)
-      .catch(() => {}); // silencioso si falla
-  }, []);
 
   const onTogglePush = useCallback(
     async (next: boolean) => {
@@ -135,18 +126,6 @@ export default function ConsumerProfile() {
   return (
     <ScreenContainer>
       <Text style={styles.title}>Mi perfil</Text>
-
-      {savings && savings.redemption_count > 0 && (
-        <View style={styles.savingsCard}>
-          <Text style={styles.savingsAmount}>
-            ${savings.total_saved.toFixed(2)} MXN
-          </Text>
-          <Text style={styles.savingsLabel}>ahorrado con Cuponiko</Text>
-          <Text style={styles.savingsCount}>
-            {savings.redemption_count} {savings.redemption_count === 1 ? 'cupón canjeado' : 'cupones canjeados'}
-          </Text>
-        </View>
-      )}
 
       <View style={styles.card}>
         <ProfileRow label="Nombre" value={user?.full_name || '—'} />
@@ -296,26 +275,4 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row' },
   error: { color: colors.danger, fontSize: fontSize.sm, marginVertical: spacing.xs },
-  savingsCard: {
-    backgroundColor: colors.primary,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  savingsAmount: {
-    fontSize: fontSize.xxl,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  savingsLabel: {
-    fontSize: fontSize.sm,
-    color: '#FFFFFF',
-    opacity: 0.9,
-  },
-  savingsCount: {
-    fontSize: fontSize.xs,
-    color: '#FFFFFF',
-    opacity: 0.7,
-  },
 });

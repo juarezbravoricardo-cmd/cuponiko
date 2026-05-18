@@ -73,10 +73,10 @@ export default function Wallet() {
         <TabBtn label="Historial" active={tab === 'history'} onPress={() => setTab('history')} />
       </View>
 
-      {savings && savings.redemption_count > 0 && (
+      {savings && (savings.redemption_count > 0 || savings.loyalty_cards_completed > 0) && (
         <View style={styles.savingsBanner}>
           <Text style={styles.savingsBannerTxt}>
-            💰 Has ahorrado ${savings.total_saved.toFixed(2)} MXN con {savings.redemption_count} {savings.redemption_count === 1 ? 'cupón' : 'cupones'}
+            💰 ${savings.total_saved.toFixed(2)} MXN ahorrado · {savings.redemption_count} {savings.redemption_count === 1 ? 'cupón' : 'cupones'} · {savings.loyalty_cards_completed} {savings.loyalty_cards_completed === 1 ? 'tarjeta' : 'tarjetas'}
           </Text>
         </View>
       )}

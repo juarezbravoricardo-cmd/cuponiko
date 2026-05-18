@@ -249,6 +249,7 @@ export async function fetchInstanceStatus(instanceId: number): Promise<InstanceS
 export interface ConsumerSavings {
   total_saved: number;
   redemption_count: number;
+  loyalty_cards_completed: number;
 }
 
 export async function fetchSavings(): Promise<ConsumerSavings> {
