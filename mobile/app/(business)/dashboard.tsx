@@ -28,13 +28,13 @@ type Tile = {
 };
 
 const TILES: Tile[] = [
-  { title: 'Escanear QR de cupón', subtitle: 'Valida un cupón de un cliente.', href: '/(business)/scanner', variant: 'primary' },
-  { title: 'Mis cupones', subtitle: 'Crea, pausa o revisa tus promociones.', href: '/(business)/coupons', variant: 'muted' },
-  { title: 'Tarjetas de lealtad', subtitle: 'Programas de sellos y recompensas.', href: '/(business)/loyalty', variant: 'muted' },
-  { title: 'Asignar sello de lealtad', subtitle: 'Escanea el QR de lealtad del cliente.', href: '/(business)/loyalty/scanner', variant: 'primary' },
-  { title: 'Anuncios destacados', subtitle: 'Promociones pagadas en el mapa.', href: '/(business)/ads', variant: 'secondary' },
-  { title: 'Notificaciones', subtitle: 'Envía push segmentado a tus clientes.', href: '/(business)/notifications', variant: 'muted' },
-  { title: 'Exportar reportes (PDF)', subtitle: 'Cupones, lealtad y redenciones.', href: '/(business)/exports', variant: 'muted' },
+  { title: 'Escanear QR de cupón', subtitle: 'Valida un cupón de un cliente.', href: '/(business)/scanner', variant: 'secondary' },
+  { title: 'Mis cupones', subtitle: 'Crea, pausa o revisa tus promociones.', href: '/(business)/coupons', variant: 'primary' },
+  { title: 'Tarjetas de lealtad', subtitle: 'Programas de sellos y recompensas.', href: '/(business)/loyalty', variant: 'primary' },
+  { title: 'Asignar sello de lealtad', subtitle: 'Escanea el QR de lealtad del cliente.', href: '/(business)/loyalty/scanner', variant: 'secondary' },
+  { title: 'Anuncios destacados', subtitle: 'Promociones pagadas en el mapa.', href: '/(business)/ads', variant: 'primary' },
+  { title: 'Notificaciones', subtitle: 'Envía push segmentado a tus clientes.', href: '/(business)/notifications', variant: 'primary' },
+  { title: 'Exportar reportes (PDF)', subtitle: 'Cupones, lealtad y redenciones.', href: '/(business)/exports', variant: 'primary' },
 ];
 
 export default function BusinessDashboard() {
