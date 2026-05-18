@@ -1,9 +1,8 @@
 /**
  * Dashboard del negocio — hub de navegación principal.
  *
- * Incluye accesos rápidos a las funciones avanzadas (notificaciones, exports,
- * lealtad, anuncios) que el tab bar no expone para no superar el límite
- * recomendado de 5 ítems en mobile.
+ * Rediseño v27: cards blancas con borde izquierdo sutil de color.
+ * Dos secciones: "Operación diaria" (scanners) y "Gestión" (lista vertical).
  */
 
 import React, { useCallback, useState } from 'react';
@@ -20,21 +19,17 @@ import { colors, fontSize, radii, spacing } from '@/utils/theme';
 // solo lo tendría si fue inyectado en otro lado; lo tratamos como opcional.
 type BusinessLikeUser = { plan?: 'free' | 'premium' };
 
-type Tile = {
-  title: string;
-  subtitle: string;
-  href: string;
-  variant: 'primary' | 'secondary' | 'muted';
-};
+const SCANNER_TILES = [
+  { title: 'Escanear QR de cupón', subtitle: 'Valida un cupón', href: '/(business)/scanner', emoji: '📷' },
+  { title: 'Asignar sello', subtitle: 'Lealtad del cliente', href: '/(business)/loyalty/scanner', emoji: '🔖' },
+];
 
-const TILES: Tile[] = [
-  { title: 'Escanear QR de cupón', subtitle: 'Valida un cupón de un cliente.', href: '/(business)/scanner', variant: 'secondary' },
-  { title: 'Mis cupones', subtitle: 'Crea, pausa o revisa tus promociones.', href: '/(business)/coupons', variant: 'primary' },
-  { title: 'Tarjetas de lealtad', subtitle: 'Programas de sellos y recompensas.', href: '/(business)/loyalty', variant: 'primary' },
-  { title: 'Asignar sello de lealtad', subtitle: 'Escanea el QR de lealtad del cliente.', href: '/(business)/loyalty/scanner', variant: 'secondary' },
-  { title: 'Anuncios destacados', subtitle: 'Promociones pagadas en el mapa.', href: '/(business)/ads', variant: 'primary' },
-  { title: 'Notificaciones', subtitle: 'Envía push segmentado a tus clientes.', href: '/(business)/notifications', variant: 'primary' },
-  { title: 'Exportar reportes (PDF)', subtitle: 'Cupones, lealtad y redenciones.', href: '/(business)/exports', variant: 'primary' },
+const MANAGEMENT_TILES = [
+  { title: 'Mis cupones', subtitle: 'Crea, pausa o revisa tus promociones', href: '/(business)/coupons', emoji: '🎟️' },
+  { title: 'Tarjetas de lealtad', subtitle: 'Programas de sellos y recompensas', href: '/(business)/loyalty', emoji: '⭐' },
+  { title: 'Anuncios destacados', subtitle: 'Promociones pagadas en el mapa', href: '/(business)/ads', emoji: '📢' },
+  { title: 'Notificaciones', subtitle: 'Push segmentado a tus clientes', href: '/(business)/notifications', emoji: '🔔' },
+  { title: 'Exportar reportes', subtitle: 'Cupones, lealtad y redenciones (PDF)', href: '/(business)/exports', emoji: '📄' },
 ];
 
 export default function BusinessDashboard() {
@@ -87,42 +82,62 @@ export default function BusinessDashboard() {
     showUpgradeButton = true;
   }
 
+  // Nombre y plan para el header
+  const businessName = businessData?.business_name || user?.full_name || 'Mi negocio';
+  const plan = businessData?.plan || (businessUser?.plan ?? 'Free');
+
   return (
     <ScreenContainer>
-      <View style={styles.hero}>
-        <Text style={styles.title}>Hola, {user?.full_name || 'Negocio'}</Text>
-        <Text style={styles.sub}>¿Qué quieres hacer hoy?</Text>
+      {/* Header con avatar y nombre del negocio */}
+      <View style={styles.header}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{businessName?.charAt(0) || 'N'}</Text>
+        </View>
+        <View>
+          <Text style={styles.businessName}>{businessName}</Text>
+          <Text style={styles.planBadge}>{plan === 'free' ? 'Free' : plan === 'premium' ? 'Premium' : plan}</Text>
+        </View>
       </View>
 
-      {TILES.map((t) => (
-        <Pressable
-          key={t.href}
-          style={[
-            styles.tile,
-            t.variant === 'primary' && { backgroundColor: colors.primary },
-            t.variant === 'secondary' && { backgroundColor: colors.secondary },
-            t.variant === 'muted' && styles.tileMuted,
-          ]}
-          onPress={() => router.push(t.href as never)}
-        >
-          <Text
-            style={[
-              styles.tileTitle,
-              t.variant === 'muted' && { color: colors.textPrimary },
-            ]}
+      {/* Sección: Operación diaria */}
+      <Text style={styles.sectionLabel}>Operación diaria</Text>
+      <View style={styles.scannerGrid}>
+        {SCANNER_TILES.map((tile) => (
+          <Pressable
+            key={tile.href}
+            style={styles.scannerCard}
+            onPress={() => router.push(tile.href as never)}
           >
-            {t.title}
-          </Text>
-          <Text
-            style={[
-              styles.tileSub,
-              t.variant === 'muted' && { color: colors.textMuted },
-            ]}
+            <View style={styles.scannerTop}>
+              <Text style={styles.scannerEmoji}>{tile.emoji}</Text>
+              <View style={styles.scannerBadge}>
+                <Text style={styles.scannerBadgeText}>Scanner</Text>
+              </View>
+            </View>
+            <Text style={styles.scannerTitle}>{tile.title}</Text>
+            <Text style={styles.scannerSub}>{tile.subtitle}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Sección: Gestión */}
+      <Text style={styles.sectionLabel}>Gestión</Text>
+      <View style={styles.managementList}>
+        {MANAGEMENT_TILES.map((tile) => (
+          <Pressable
+            key={tile.href}
+            style={styles.managementCard}
+            onPress={() => router.push(tile.href as never)}
           >
-            {t.subtitle}
-          </Text>
-        </Pressable>
-      ))}
+            <Text style={styles.managementEmoji}>{tile.emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.managementTitle}>{tile.title}</Text>
+              <Text style={styles.managementSub}>{tile.subtitle}</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+        ))}
+      </View>
 
       {showUpgradeButton && (
         <>
@@ -139,11 +154,126 @@ export default function BusinessDashboard() {
 }
 
 const styles = StyleSheet.create({
-  hero: { marginBottom: spacing.md, gap: spacing.xs },
-  title: { fontSize: fontSize.xxl, fontWeight: '800', color: colors.textPrimary },
-  sub: { color: colors.textMuted },
-  tile: { borderRadius: radii.lg, padding: spacing.lg, gap: spacing.xs },
-  tileMuted: { backgroundColor: colors.bgMuted },
-  tileTitle: { fontSize: fontSize.lg, fontWeight: '800', color: '#FFFFFF' },
-  tileSub: { color: '#FFFFFFCC' },
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: fontSize.md,
+  },
+  businessName: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  planBadge: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+  },
+
+  // Sección labels
+  sectionLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    color: colors.textMuted,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+  },
+
+  // Scanner cards (grid 2x2)
+  scannerGrid: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  scannerCard: {
+    flex: 1,
+    backgroundColor: colors.bgLight,
+    borderRadius: radii.lg,
+    borderWidth: 0.5,
+    borderColor: colors.border,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.secondary,
+    padding: spacing.md,
+  },
+  scannerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  scannerEmoji: {
+    fontSize: 18,
+  },
+  scannerBadge: {
+    backgroundColor: colors.secondary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 1,
+    borderRadius: 999,
+  },
+  scannerBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  scannerTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  scannerSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+
+  // Management cards (lista vertical)
+  managementList: {
+    gap: spacing.sm,
+  },
+  managementCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.bgLight,
+    borderRadius: radii.lg,
+    borderWidth: 0.5,
+    borderColor: colors.border,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+    padding: spacing.md,
+  },
+  managementEmoji: {
+    fontSize: 20,
+  },
+  managementTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  managementSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  chevron: {
+    fontSize: fontSize.lg,
+    color: colors.textMuted,
+    fontWeight: '300',
+  },
 });
