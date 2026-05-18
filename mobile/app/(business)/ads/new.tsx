@@ -15,12 +15,13 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
-import { createAd, type CreateAdInput } from '@/services/adsApi';
+import { createAd, uploadAdImage, type CreateAdInput } from '@/services/adsApi';
 import { extractApiError } from '@/services/api';
 import { colors, fontSize, radii, spacing } from '@/utils/theme';
 
@@ -72,6 +73,8 @@ export default function BusinessAdNew() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [discountType, setDiscountType] = useState<DiscountType>('percent');
   const [discountValue, setDiscountValue] = useState('20');
   const [precioRef, setPrecioRef] = useState('');
@@ -104,6 +107,37 @@ export default function BusinessAdNew() {
     if (Number(costValue) <= 0) fe.costValue = 'Mayor a 0.';
     return fe;
   }, [title, imageUrl, discountValue, precioRef, requiresPrecio, startDate, endDate, redemptionLimit, costValue]);
+
+  const pickImage = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permiso necesario', 'Necesitamos acceso a tu galería para subir la imagen del anuncio.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (result.canceled) return;
+
+    const asset = result.assets[0];
+    setImagePreview(asset.uri);
+    setUploading(true);
+
+    try {
+      const url = await uploadAdImage(asset.uri);
+      setImageUrl(url);
+    } catch {
+      Alert.alert('Error', 'No pudimos subir la imagen. Intenta de nuevo.');
+      setImagePreview(null);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const onSubmit = async () => {
     setError(null);
@@ -164,15 +198,28 @@ export default function BusinessAdNew() {
           />
         </View>
         <View>
-          <SectionLabel text="URL de imagen" hint={{ title: "Imagen del anuncio", message: "Sube una foto atractiva de tu producto o promoción. Se mostrará en el carrusel del mapa.\n\nRecomendaciones:\n• Tamaño ideal: 1280x720 px\n• Formato: JPG, PNG o WebP\n• Buena iluminación y sin texto excesivo" }} />
-          <TextField
-            label=""
-            placeholder="https://..."
-            value={imageUrl}
-            onChangeText={setImageUrl}
-            autoCapitalize="none"
-            error={fieldErrors.imageUrl}
-          />
+          <SectionLabel text="Imagen del anuncio (16:9)" hint={{ title: "Imagen del anuncio", message: "Sube una foto atractiva de tu producto o promoción. Se mostrará en el carrusel del mapa.\n\nRecomendaciones:\n• Tamaño ideal: 1280x720 px\n• Formato: JPG, PNG o WebP\n• Buena iluminación y sin texto excesivo" }} />
+          {imagePreview ? (
+            <View style={styles.imagePreviewContainer}>
+              <Image source={{ uri: imagePreview }} style={styles.imagePreview} resizeMode="cover" />
+              {uploading && (
+                <View style={styles.imageUploading}>
+                  <Text style={styles.imageUploadingTxt}>Subiendo…</Text>
+                </View>
+              )}
+              <Pressable style={styles.imageChangeBtn} onPress={pickImage}>
+                <Text style={styles.imageChangeTxt}>Cambiar imagen</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable style={styles.imagePicker} onPress={pickImage}>
+              <Text style={styles.imagePickerIcon}>📷</Text>
+              <Text style={styles.imagePickerTxt}>Toca para seleccionar imagen de tu galería</Text>
+            </Pressable>
+          )}
+          {fieldErrors.imageUrl && !uploading && !imagePreview && (
+            <Text style={styles.fieldError}>{fieldErrors.imageUrl}</Text>
+          )}
         </View>
       </Section>
 
@@ -334,4 +381,31 @@ const styles = StyleSheet.create({
   chipText: { color: colors.textPrimary, fontWeight: '600', fontSize: fontSize.sm },
   chipTextActive: { color: '#FFFFFF' },
   error: { color: colors.danger, fontSize: fontSize.sm, textAlign: 'center', marginVertical: spacing.sm },
+  imagePicker: {
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    borderRadius: radii.lg,
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.bgMuted,
+  },
+  imagePickerIcon: { fontSize: 36 },
+  imagePickerTxt: { color: colors.textMuted, fontSize: fontSize.sm, textAlign: 'center' },
+  imagePreviewContainer: { borderRadius: radii.lg, overflow: 'hidden' },
+  imagePreview: { width: '100%', aspectRatio: 16 / 9, borderRadius: radii.lg },
+  imageUploading: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center',
+  },
+  imageUploadingTxt: { color: '#FFFFFF', fontWeight: '800', fontSize: fontSize.md },
+  imageChangeBtn: {
+    marginTop: spacing.sm,
+    alignSelf: 'center',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.lg,
+  },
+  imageChangeTxt: { color: colors.secondary, fontWeight: '700', fontSize: fontSize.sm },
+  fieldError: { color: colors.danger, fontSize: fontSize.xs, marginTop: 2 },
 });

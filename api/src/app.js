@@ -33,6 +33,7 @@ const { notificationsRouter, pushRouter } = require('./routes/notifications');
 const accountRoutes = require('./routes/account');
 const exportsRoutes = require('./routes/exports');
 const { publicBusinessesRouter, publicCouponsRouter } = require('./routes/public');
+const uploadsRouter = require('./routes/uploads');
 
 function buildApp() {
   const app = express();
@@ -148,6 +149,7 @@ function buildApp() {
   app.use('/api/internal', internalRoutes); // alias por compatibilidad
 
   // Fase 3.5 — rutas autenticadas
+  app.use('/api/uploads', uploadsRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/push', pushRouter);
   app.use('/api/account', accountRoutes);

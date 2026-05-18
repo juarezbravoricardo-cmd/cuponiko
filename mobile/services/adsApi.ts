@@ -24,6 +24,24 @@ export type CreateAdResponse = {
   message: string;
 };
 
+export async function uploadAdImage(uri: string): Promise<string> {
+  const formData = new FormData();
+  const filename = uri.split('/').pop() || 'image.jpg';
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1] === 'jpg' ? 'jpeg' : match[1]}` : 'image/jpeg';
+
+  formData.append('image', {
+    uri,
+    name: filename,
+    type,
+  } as unknown as Blob);
+
+  const r = await api.post('/api/uploads/ad-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return r.data.data.image_url;
+}
+
 export async function createAd(input: CreateAdInput): Promise<CreateAdResponse> {
   const r = await api.post('/api/ads/create', input);
   return r.data.data;
