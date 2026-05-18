@@ -9,7 +9,7 @@
  * Es eficiente en costo porque ya cacheamos el listado en home.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -25,6 +25,7 @@ import { api } from '@/services/api';
 import { saveCoupon } from '@/services/couponsApi';
 import type { CouponStatus, DiscountType } from '@/services/couponsApi';
 import { joinLoyalty } from '@/services/loyaltyApi';
+import { useGeoLocation } from '@/hooks/useGeoLocation';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { colors, fontSize, radii, spacing } from '@/utils/theme';
 import { formatDiscount } from '@/utils/format';
@@ -66,11 +67,29 @@ interface PublicBusiness {
   category: string;
   logo_url: string | null;
   display_address: string | null;
+  lat: number | null;
+  lng: number | null;
   active_coupons_count: number;
   has_loyalty_program: boolean;
   coupons: PublicBusinessCoupon[];
   loyalty_card: PublicLoyaltyCard | null;
 }
+
+function haversineDistance(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number
+): number {
+  const R = 6371000; // radio de la Tierra en metros
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+const LOYALTY_JOIN_RADIUS_M = 500; // metros
 
 export default function BusinessProfile() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -80,6 +99,16 @@ export default function BusinessProfile() {
   const [savingId, setSavingId] = useState<number | null>(null);
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
+  const { coords: consumerCoords } = useGeoLocation();
+
+  const isNearBusiness = useMemo(() => {
+    if (!consumerCoords || !data?.lat || !data?.lng) return false;
+    const dist = haversineDistance(
+      consumerCoords.lat, consumerCoords.lng,
+      Number(data.lat), Number(data.lng)
+    );
+    return dist <= LOYALTY_JOIN_RADIUS_M;
+  }, [consumerCoords, data]);
 
   useEffect(() => {
     if (!id) return;
@@ -219,7 +248,11 @@ export default function BusinessProfile() {
             <Text style={styles.loyaltyStamps}>
               {data.loyalty_card.stamps_required} sellos para tu recompensa
             </Text>
-            {!joined ? (
+            {joined ? (
+              <View style={styles.joinedBadge}>
+                <Text style={styles.joinedBadgeTxt}>✅ Ya estás en este programa</Text>
+              </View>
+            ) : isNearBusiness ? (
               <Pressable
                 style={[styles.joinBtn, joining && { opacity: 0.6 }]}
                 disabled={joining}
@@ -230,8 +263,10 @@ export default function BusinessProfile() {
                 </Text>
               </Pressable>
             ) : (
-              <View style={styles.joinedBadge}>
-                <Text style={styles.joinedBadgeTxt}>✅ Ya estás en este programa</Text>
+              <View style={styles.nearbyHint}>
+                <Text style={styles.nearbyHintTxt}>
+                  📍 Acércate al negocio para unirte al programa de lealtad
+                </Text>
               </View>
             )}
           </View>
@@ -337,5 +372,19 @@ const styles = StyleSheet.create({
     color: colors.success,
     fontWeight: '700',
     fontSize: fontSize.sm,
+  },
+  nearbyHint: {
+    backgroundColor: colors.bgMuted,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  nearbyHintTxt: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    textAlign: 'center',
+    fontWeight: '600',
   },
 });
