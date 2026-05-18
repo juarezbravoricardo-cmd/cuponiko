@@ -261,3 +261,17 @@ export async function fetchWallet(tab: 'active' | 'history'): Promise<WalletCoup
   const r = await api.get('/api/wallet/coupons', { params: { tab } });
   return r.data.data.coupons;
 }
+
+// ────────────────────────────────────────────────────────────
+// DASH-01
+// ────────────────────────────────────────────────────────────
+export interface DashboardStats {
+  active_coupons: number;
+  redemptions_today: number;
+  loyalty_customers: number;
+}
+
+export async function fetchDashboardStats(): Promise<DashboardStats> {
+  const r = await api.get('/api/account/dashboard-stats');
+  return r.data.data;
+}
