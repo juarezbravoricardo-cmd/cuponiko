@@ -32,7 +32,10 @@ const COLOR_PALETTE = [
   '#1F1F1F', // textPrimary
 ];
 
-const ICON_OPTIONS = ['☕', '🍕', '🍔', '🍦', '✂️', '🛍️', '🎯', '⭐'];
+const ICON_OPTIONS = [
+  '☕', '🍕', '🍔', '🍦', '✂️', '🛍️', '🎯', '⭐',
+  '🍺', '🌮', '🍴', '🔧', '🛞', '🦷', '🩺', '💉', '💊',
+];
 
 export default function BusinessLoyaltyNew() {
   const router = useRouter();
