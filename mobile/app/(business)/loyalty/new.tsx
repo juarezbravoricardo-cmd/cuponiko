@@ -37,6 +37,23 @@ const ICON_OPTIONS = [
   '🍺', '🌮', '🍴', '🔧', '🛞', '🦷', '🩺', '💉', '💊',
 ];
 
+function HelpTip({ title, message }: { title: string; message: string }) {
+  return (
+    <Pressable onPress={() => Alert.alert(title, message)} style={{ marginLeft: spacing.xs }}>
+      <Text style={{ color: colors.secondary, fontSize: fontSize.md, fontWeight: '800' }}>ⓘ</Text>
+    </Pressable>
+  );
+}
+
+function SectionLabel({ text, hint }: { text: string; hint?: { title: string; message: string } }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+      <Text style={{ fontSize: fontSize.sm, fontWeight: '700', color: colors.textPrimary }}>{text}</Text>
+      {hint && <HelpTip title={hint.title} message={hint.message} />}
+    </View>
+  );
+}
+
 export default function BusinessLoyaltyNew() {
   const router = useRouter();
 
@@ -91,17 +108,30 @@ export default function BusinessLoyaltyNew() {
       <Text style={styles.title}>Nueva tarjeta de lealtad</Text>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>1. Datos básicos</Text>
+        <SectionLabel
+          text="Nombre de la tarjeta"
+          hint={{
+            title: "Nombre de la tarjeta",
+            message: "El nombre que verán tus clientes en su app. Hazlo descriptivo y atractivo.\n\nEjemplos:\n• Café de la casa\n• Corte de pelo VIP\n• Combo taquero\n• Lavado premium"
+          }}
+        />
         <TextField
-          label="Nombre de la tarjeta"
+          label=""
           placeholder="Ej. Café de la casa"
           value={name}
           onChangeText={setName}
           error={fieldErrors.name}
           maxLength={60}
         />
+        <SectionLabel
+          text="Recompensa"
+          hint={{
+            title: "Recompensa",
+            message: "Lo que recibirá el cliente al completar todos los sellos. Sé específico para motivarlos.\n\nEjemplos:\n• Tu décimo café es gratis\n• 50% de descuento en tu próximo corte\n• Un combo taquero sin costo\n• Lavado de auto gratis"
+          }}
+        />
         <TextField
-          label="Recompensa"
+          label=""
           placeholder="Ej. Tu décimo café gratis"
           value={reward}
           onChangeText={setReward}
@@ -112,7 +142,13 @@ export default function BusinessLoyaltyNew() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>2. Sellos requeridos</Text>
+        <SectionLabel
+          text="Sellos requeridos"
+          hint={{
+            title: "Sellos requeridos",
+            message: "¿Cuántas visitas necesita el cliente para ganar la recompensa?\n\nRecomendaciones:\n• 5-8 sellos: ideal para productos de consumo frecuente (café, tacos)\n• 10-15 sellos: para servicios (cortes, lavados)\n• 20+ sellos: solo si la recompensa es de alto valor\n\nMenos sellos = más clientes completan la tarjeta = más fidelización."
+          }}
+        />
         <View style={styles.sliderRow}>
           <Pressable
             onPress={() => setStamps(Math.max(1, stamps - 1))}
@@ -139,7 +175,13 @@ export default function BusinessLoyaltyNew() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>3. Color</Text>
+        <SectionLabel
+          text="Color de la tarjeta"
+          hint={{
+            title: "Color de la tarjeta",
+            message: "El color que tendrá la tarjeta en la app de tus clientes. Elige uno que represente tu marca o negocio.\n\nTip: usa un color que contraste con el ícono que elijas."
+          }}
+        />
         <View style={styles.chipsRow}>
           {COLOR_PALETTE.map((c) => (
             <Pressable
@@ -155,7 +197,13 @@ export default function BusinessLoyaltyNew() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>4. Ícono</Text>
+        <SectionLabel
+          text="Ícono de la tarjeta"
+          hint={{
+            title: "Ícono de la tarjeta",
+            message: "El ícono que aparecerá en la tarjeta. Elige el que mejor represente tu producto o servicio.\n\n☕ Cafetería  🍕 Pizzería  🍔 Hamburguesas\n🌮 Tacos  🍺 Bar  🍦 Helados\n✂️ Estética  🔧 Taller  🦷 Dentista\n🩺 Consultorio  💊 Farmacia  💉 Clínica"
+          }}
+        />
         <View style={styles.chipsRow}>
           {ICON_OPTIONS.map((g) => (
             <Pressable
