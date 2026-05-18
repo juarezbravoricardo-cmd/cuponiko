@@ -29,8 +29,8 @@ type DiscountType = CreateAdInput['discount_type'];
 type CostType = CreateAdInput['cost_type'];
 
 const DISCOUNT_OPTIONS: { value: DiscountType; label: string }[] = [
-  { value: 'percent', label: '% off' },
-  { value: 'fixed', label: '$ off' },
+  { value: 'percent', label: '% Descuento' },
+  { value: 'fixed', label: '$ Pesos off' },
   { value: '2x1', label: '2x1' },
   { value: 'free', label: 'Gratis' },
 ];
@@ -92,7 +92,7 @@ export default function BusinessAdNew() {
   const fieldErrors = useMemo(() => {
     const fe: Record<string, string> = {};
     if (!title.trim()) fe.title = 'Título obligatorio.';
-    if (!imageUrl.trim()) fe.imageUrl = 'URL de imagen obligatoria.';
+    if (!imageUrl.trim()) fe.imageUrl = 'Selecciona una imagen desde tu galería.';
     const dv = Number(discountValue);
     if (!Number.isFinite(dv) || dv <= 0) fe.discountValue = 'Valor inválido.';
     if (requiresPrecio) {
