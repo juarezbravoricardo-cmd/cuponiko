@@ -80,6 +80,34 @@ async function getWallet(consumerId, tab) {
   return r.rows.map(shape);
 }
 
+async function getInstanceStatus(consumerId, instanceId) {
+  const r = await query(
+    `SELECT ci.uses_count,
+            ci.last_used_at,
+            (
+              SELECT r.discount_applied
+              FROM redemptions r
+              WHERE r.coupon_instance_id = ci.id
+              ORDER BY r.redeemed_at DESC
+              LIMIT 1
+            ) AS last_discount_applied
+       FROM coupon_instances ci
+      WHERE ci.id = $1 AND ci.consumer_id = $2`,
+    [instanceId, consumerId]
+  );
+  if (r.rowCount === 0) {
+    throw new AppError(404, 'NOT_FOUND', 'Instancia no encontrada.');
+  }
+  const row = r.rows[0];
+  return {
+    uses_count: row.uses_count,
+    last_used_at: row.last_used_at,
+    last_discount_applied: row.last_discount_applied !== null
+      ? Number(row.last_discount_applied)
+      : null,
+  };
+}
+
 function shape(row) {
   return {
     coupon_instance_id: Number(row.instance_id),
@@ -114,4 +142,4 @@ function shape(row) {
   };
 }
 
-module.exports = { getWallet };
+module.exports = { getWallet, getInstanceStatus };

@@ -235,6 +235,17 @@ export async function redeemByShortCode(shortCode: string): Promise<RedeemRespon
 // ────────────────────────────────────────────────────────────
 // CART-01
 // ────────────────────────────────────────────────────────────
+export interface InstanceStatus {
+  uses_count: number;
+  last_used_at: string | null;
+  last_discount_applied: number | null;
+}
+
+export async function fetchInstanceStatus(instanceId: number): Promise<InstanceStatus> {
+  const r = await api.get(`/api/wallet/instance/${instanceId}/status`);
+  return r.data.data;
+}
+
 export async function fetchWallet(tab: 'active' | 'history'): Promise<WalletCoupon[]> {
   const r = await api.get('/api/wallet/coupons', { params: { tab } });
   return r.data.data.coupons;

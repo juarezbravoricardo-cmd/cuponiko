@@ -28,9 +28,9 @@ import {
   View,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
-import { generateQr, type QrTokenResponse } from '@/services/couponsApi';
+import { generateQr, fetchInstanceStatus, type QrTokenResponse } from '@/services/couponsApi';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { colors, fontSize, radii, spacing } from '@/utils/theme';
 
@@ -38,10 +38,14 @@ const QR_SIZE = 280;
 
 export default function QrScreen() {
   const { instance_id } = useLocalSearchParams<{ instance_id: string }>();
+  const router = useRouter();
   const [qr, setQr] = useState<QrTokenResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [redeemed, setRedeemed] = useState(false);
+  const [discountApplied, setDiscountApplied] = useState<number | null>(null);
+  const initialUsesRef = useRef<number | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const warnedRef = useRef(false);
 
@@ -91,6 +95,35 @@ export default function QrScreen() {
     };
   }, [secondsLeft]);
 
+  // Polling cada 3s para detectar redención
+  useEffect(() => {
+    if (!instance_id || loading || redeemed || secondsLeft <= 0) return;
+
+    // Capturar uses_count inicial al primer load
+    if (initialUsesRef.current === null) {
+      fetchInstanceStatus(Number(instance_id))
+        .then((s) => { initialUsesRef.current = s.uses_count; })
+        .catch(() => {});
+    }
+
+    const poll = setInterval(async () => {
+      try {
+        const s = await fetchInstanceStatus(Number(instance_id));
+        if (initialUsesRef.current !== null && s.uses_count > initialUsesRef.current) {
+          setRedeemed(true);
+          setDiscountApplied(s.last_discount_applied);
+          clearInterval(poll);
+          // Haptic de éxito
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => null);
+        }
+      } catch {
+        // silencioso — el polling no debe bloquear UX
+      }
+    }, 3000);
+
+    return () => clearInterval(poll);
+  }, [instance_id, loading, redeemed, secondsLeft]);
+
   const mm = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
   const ss = (secondsLeft % 60).toString().padStart(2, '0');
 
@@ -106,7 +139,19 @@ export default function QrScreen() {
               <Text style={styles.retryTxt}>Reintentar</Text>
             </Pressable>
           </>
-        ) : !qr ? null : secondsLeft <= 0 ? (
+        ) : !qr ? null : redeemed ? (
+          <>
+            <Text style={styles.successIcon}>✅</Text>
+            <Text style={styles.successTitle}>¡Cupón canjeado!</Text>
+            {discountApplied !== null && discountApplied > 0 && (
+              <Text style={styles.successAmount}>Ahorraste ${discountApplied.toFixed(2)} MXN</Text>
+            )}
+            <Text style={styles.successHint}>El descuento fue aplicado por el negocio.</Text>
+            <Pressable style={styles.retryBtn} onPress={() => router.back()}>
+              <Text style={styles.retryTxt}>Volver a mi cartera</Text>
+            </Pressable>
+          </>
+        ) : secondsLeft <= 0 ? (
           <>
             <Text style={styles.expired}>Código expirado</Text>
             <Text style={styles.muted}>Genera uno nuevo y muéstralo al cajero.</Text>
@@ -208,4 +253,23 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
   },
   retryTxt: { color: '#FFF', fontWeight: '800' },
+  successIcon: { fontSize: 64 },
+  successTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: '800',
+    color: colors.success,
+    textAlign: 'center',
+  },
+  successAmount: {
+    fontSize: fontSize.xxl,
+    fontWeight: '800',
+    color: colors.primary,
+    textAlign: 'center',
+  },
+  successHint: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
+  },
 });
