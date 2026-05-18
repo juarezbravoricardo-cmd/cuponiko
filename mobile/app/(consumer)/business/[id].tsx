@@ -265,7 +265,7 @@ export default function BusinessProfile() {
             ) : (
               <View style={styles.nearbyHint}>
                 <Text style={styles.nearbyHintTxt}>
-                  📍 Acércate al negocio para unirte al programa de lealtad
+                  🎁 ¡En tu próxima visita pide que activen tu tarjeta de lealtad gratis y gana: {data.loyalty_card!.reward_description}!
                 </Text>
               </View>
             )}
