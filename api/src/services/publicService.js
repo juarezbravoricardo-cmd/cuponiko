@@ -74,6 +74,31 @@ async function getBusinessPublic(rawId) {
       [id]
     );
 
+    // Detalles de la tarjeta de lealtad activa (si existe). Se expone al
+    // consumidor para permitirle unirse desde el perfil del negocio.
+    let loyalty_card = null;
+    if (b.has_loyalty_program) {
+      const lcRes = await query(
+        `SELECT id, name, reward_description, stamps_required, design_color, icon
+           FROM loyalty_cards
+          WHERE business_id = $1 AND is_active = true
+          ORDER BY created_at DESC
+          LIMIT 1`,
+        [id]
+      );
+      if (lcRes.rowCount > 0) {
+        const lc = lcRes.rows[0];
+        loyalty_card = {
+          loyalty_card_id: Number(lc.id),
+          name: lc.name,
+          reward_description: lc.reward_description,
+          stamps_required: lc.stamps_required,
+          design_color: lc.design_color,
+          icon: lc.icon,
+        };
+      }
+    }
+
     return {
       id: Number(b.id),
       business_name: b.business_name,
@@ -111,6 +136,7 @@ async function getBusinessPublic(rawId) {
         accumulable: c.accumulable,
         status: c.status,
       })),
+      loyalty_card,
     };
   });
 }

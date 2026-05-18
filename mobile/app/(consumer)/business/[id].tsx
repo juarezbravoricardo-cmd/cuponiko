@@ -24,6 +24,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '@/services/api';
 import { saveCoupon } from '@/services/couponsApi';
 import type { CouponStatus, DiscountType } from '@/services/couponsApi';
+import { joinLoyalty } from '@/services/loyaltyApi';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { colors, fontSize, radii, spacing } from '@/utils/theme';
 import { formatDiscount } from '@/utils/format';
@@ -50,6 +51,15 @@ interface PublicBusinessCoupon {
   status: CouponStatus;
 }
 
+interface PublicLoyaltyCard {
+  loyalty_card_id: number;
+  name: string;
+  reward_description: string;
+  stamps_required: number;
+  design_color: string;
+  icon: string;
+}
+
 interface PublicBusiness {
   id: number;
   business_name: string;
@@ -59,6 +69,7 @@ interface PublicBusiness {
   active_coupons_count: number;
   has_loyalty_program: boolean;
   coupons: PublicBusinessCoupon[];
+  loyalty_card: PublicLoyaltyCard | null;
 }
 
 export default function BusinessProfile() {
@@ -67,6 +78,8 @@ export default function BusinessProfile() {
   const [data, setData] = useState<PublicBusiness | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [joining, setJoining] = useState(false);
+  const [joined, setJoined] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -84,6 +97,31 @@ export default function BusinessProfile() {
       }
     })();
   }, [id]);
+
+  const onJoinLoyalty = async (loyaltyCardId: number) => {
+    setJoining(true);
+    try {
+      const res = await joinLoyalty(loyaltyCardId);
+      setJoined(true);
+      Alert.alert('¡Te uniste!', res.message, [
+        { text: 'Ver mis tarjetas', onPress: () => router.push('/(consumer)/loyalty') },
+        { text: 'Seguir aquí' },
+      ]);
+    } catch (err) {
+      const msg =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+        'No pudimos unirte al programa.';
+      // Si el error es que ya está unido, mostrar como éxito
+      if (msg.includes('ya estás') || msg.includes('already')) {
+        setJoined(true);
+        Alert.alert('Ya estás en este programa', 'Ve a tu pestaña de Lealtad para ver tu tarjeta.');
+      } else {
+        Alert.alert('Error', msg);
+      }
+    } finally {
+      setJoining(false);
+    }
+  };
 
   const onSave = async (couponId: number) => {
     setSavingId(couponId);
@@ -166,6 +204,39 @@ export default function BusinessProfile() {
           </View>
         )}
       />
+
+      {data.loyalty_card && (
+        <View style={styles.loyaltySection}>
+          <Text style={styles.section}>Programa de lealtad</Text>
+          <View style={[styles.loyaltyCard, { borderColor: data.loyalty_card.design_color }]}>
+            <View style={styles.loyaltyTop}>
+              <Text style={styles.loyaltyIcon}>{data.loyalty_card.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.loyaltyName}>{data.loyalty_card.name}</Text>
+                <Text style={styles.loyaltyReward}>{data.loyalty_card.reward_description}</Text>
+              </View>
+            </View>
+            <Text style={styles.loyaltyStamps}>
+              {data.loyalty_card.stamps_required} sellos para tu recompensa
+            </Text>
+            {!joined ? (
+              <Pressable
+                style={[styles.joinBtn, joining && { opacity: 0.6 }]}
+                disabled={joining}
+                onPress={() => onJoinLoyalty(data.loyalty_card!.loyalty_card_id)}
+              >
+                <Text style={styles.joinBtnTxt}>
+                  {joining ? 'Uniéndote…' : 'Unirme al programa de lealtad'}
+                </Text>
+              </Pressable>
+            ) : (
+              <View style={styles.joinedBadge}>
+                <Text style={styles.joinedBadgeTxt}>✅ Ya estás en este programa</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
     </ScreenContainer>
   );
 }
@@ -211,4 +282,60 @@ const styles = StyleSheet.create({
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnTxt: { color: '#FFF', fontWeight: '800' },
   muted: { color: colors.textMuted, textAlign: 'center' },
+  loyaltySection: {
+    marginTop: spacing.lg,
+  },
+  loyaltyCard: {
+    backgroundColor: colors.bgLight,
+    borderWidth: 2,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  loyaltyTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  loyaltyIcon: {
+    fontSize: 36,
+  },
+  loyaltyName: {
+    fontSize: fontSize.md,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  loyaltyReward: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+  },
+  loyaltyStamps: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+  joinBtn: {
+    backgroundColor: colors.secondary,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  joinBtnTxt: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: fontSize.md,
+  },
+  joinedBadge: {
+    backgroundColor: colors.bgMuted,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  joinedBadgeTxt: {
+    color: colors.success,
+    fontWeight: '700',
+    fontSize: fontSize.sm,
+  },
 });
