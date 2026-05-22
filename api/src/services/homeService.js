@@ -17,6 +17,7 @@
 
 const { query } = require('../config/db');
 const { AppError } = require('../utils/AppError');
+const { isReviewer } = require('../utils/reviewer');
 const {
   geoCache,
   couponListCache,
@@ -29,7 +30,67 @@ const DEFAULT_RADIUS_M = 5000;
 const MAX_RESULTS = 50;
 
 // HOME-01
-async function nearbyBusinesses({ lat, lng, radius, category }) {
+async function nearbyBusinesses({ lat, lng, radius, category, userId }) {
+  // --- Reviewer bypass: skip geo filter, return all active businesses ---
+  if (isReviewer(userId)) {
+    const hasCategory = typeof category === 'string' && category.trim().length > 0;
+    const cat = hasCategory ? category.trim() : null;
+
+    const params = [];
+    let where = `WHERE b.status = 'active'`;
+    if (hasCategory) {
+      params.push(cat);
+      where += ` AND b.category = $1`;
+    }
+
+    const r = await query(
+      `SELECT b.id, b.business_name, b.category, b.logo_url, b.display_address, b.plan,
+              b.lat, b.lng,
+              0 AS dist_m,
+              COALESCE((
+                SELECT COUNT(*)::int FROM coupons c
+                 WHERE c.business_id = b.id AND c.status = 'active'
+                   AND c.end_date >= CURRENT_DATE
+              ), 0) AS active_coupons_count,
+              (SELECT json_build_object(
+                  'title', c.title,
+                  'discount_type', c.discount_type,
+                  'discount_value', c.discount_value
+                )
+                 FROM coupons c
+                 WHERE c.business_id = b.id
+                   AND c.status = 'active'
+                   AND c.end_date >= CURRENT_DATE
+                 ORDER BY c.created_at DESC
+                 LIMIT 1) AS top_coupon
+         FROM businesses b
+         ${where}
+         ORDER BY b.created_at DESC
+         LIMIT ${MAX_RESULTS}`,
+      params
+    );
+    return r.rows.map((row) => ({
+      business_id: Number(row.id),
+      business_name: row.business_name,
+      category: row.category,
+      logo_url: row.logo_url,
+      display_address: row.display_address,
+      plan: row.plan,
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      distance_m: 0,
+      active_coupons_count: Number(row.active_coupons_count),
+      top_coupon: row.top_coupon
+        ? {
+            title: row.top_coupon.title,
+            discount_type: row.top_coupon.discount_type,
+            discount_value: Number(row.top_coupon.discount_value),
+          }
+        : null,
+    }));
+  }
+
+  // --- Normal user path (unchanged) ---
   const latN = Number(lat);
   const lngN = Number(lng);
   let radiusN = Number(radius || DEFAULT_RADIUS_M);

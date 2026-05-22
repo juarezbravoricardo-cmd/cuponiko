@@ -26,7 +26,7 @@ businessesRouter.get(
   requireRole('consumer'),
   asyncHandler(async (req, res) => {
     const { lat, lng, radius, category } = req.query;
-    const list = await home.nearbyBusinesses({ lat, lng, radius, category });
+    const list = await home.nearbyBusinesses({ lat, lng, radius, category, userId: req.user.id });
     res.status(200).json({ data: { businesses: list } });
   })
 );
