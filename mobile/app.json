@@ -13,7 +13,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#F97316"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "bundleIdentifier": "mx.cuponiko.app",
       "supportsTablet": false,
@@ -25,7 +27,7 @@
     },
     "android": {
       "package": "mx.cuponiko.app",
-      "versionCode": 7,
+      "versionCode": 8,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F97316"
@@ -46,7 +48,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      ["./withGoogleMapsApiKey", { "apiKey": "AIzaSyAGvhyv51t4zQNl8euR2NQSnfNR8aWdsho" }],
+      [
+        "./withGoogleMapsApiKey",
+        {
+          "apiKey": "AIzaSyAGvhyv51t4zQNl8euR2NQSnfNR8aWdsho"
+        }
+      ],
       "expo-router",
       "expo-secure-store",
       [
@@ -66,6 +73,16 @@
         {
           "merchantIdentifier": "merchant.mx.cuponiko.app",
           "enableGooglePay": true
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
+          }
         }
       ]
     ],
