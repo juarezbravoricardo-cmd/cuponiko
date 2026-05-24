@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View, Pressable, Alert } from 'react-native';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { TextField } from '@/components/TextField';
@@ -61,11 +61,7 @@ export default function LoginScreen() {
         variant="secondary"
         onPress={() => router.push('/(auth)/register-business')}
       />
-      <Pressable
-        onPress={() => Alert.alert('Google Sign-In', 'Integración con Google OAuth en producción usa expo-auth-session.')}
-      >
-        <Text style={styles.link}>Continuar con Google</Text>
-      </Pressable>
+
     </ScreenContainer>
   );
 }
