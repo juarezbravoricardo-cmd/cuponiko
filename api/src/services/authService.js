@@ -111,20 +111,38 @@ async function registerConsumer({ email, password, full_name }) {
     const user = ins.rows[0];
     const code = await createEmailVerificationCode(client, user.id, user.email);
 
-    // Envío fuera de la transacción no es seguro si falla; pero si el envío falla,
-    // el error no debería revertir el alta — igual mandamos dentro para ser consistentes.
-    await sendVerificationEmail(user.email, code);
-
     return {
       user_id: user.id,
       email: user.email,
       role: user.role,
       email_verified: user.email_verified,
-      message: 'Cuenta creada. Revisa tu correo para verificar.',
-      // En modo mock devolvemos el código para facilitar tests
-      _debug_code: process.env.NODE_ENV === 'test' ? code : undefined,
+      emailCode: code,
     };
   });
+
+  // FUERA de la transacción: envío de email no-bloqueante
+  let emailSent = true;
+  try {
+    await sendVerificationEmail(result.email, result.emailCode);
+  } catch (err) {
+    emailSent = false;
+    console.error('[registerConsumer] email_send_failed_non_blocking', {
+      user_id: result.user_id,
+      error: err?.message,
+    });
+  }
+
+  return {
+    user_id: result.user_id,
+    email: result.email,
+    role: result.role,
+    email_verified: result.email_verified,
+    email_sent: emailSent,
+    message: emailSent
+      ? 'Cuenta creada. Revisa tu correo para verificar.'
+      : 'Cuenta creada. No pudimos enviar el correo de verificación; puedes solicitarlo de nuevo desde la pantalla de inicio de sesión.',
+    _debug_code: process.env.NODE_ENV === 'test' ? result.emailCode : undefined,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -592,7 +610,17 @@ async function forgotPassword({ email }) {
     [user.id, tokenHash]
   );
   const url = `cuponiko://auth/reset-password?token=${token}`;
-  await sendPasswordResetEmail(user.email, url);
+
+  // Envío defensivo: si Resend falla, el endpoint sigue devolviendo 200
+  // con el mensaje genérico anti-enumeration. Solo loggeamos el error.
+  try {
+    await sendPasswordResetEmail(user.email, url);
+  } catch (err) {
+    console.error('[forgotPassword] email_password_reset_failed', {
+      email: user.email,
+      error: err?.message,
+    });
+  }
 
   // En tests, devolvemos el token para poder consumirlo
   if (process.env.NODE_ENV === 'test') {
