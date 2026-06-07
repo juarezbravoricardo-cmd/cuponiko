@@ -88,7 +88,9 @@ async function registerConsumer({ email, password, full_name }) {
 
   const emailLower = email.toLowerCase();
 
-  return withTransaction(async (client) => {
+  // 1. Crear cuenta y código DENTRO de la transacción.
+  //    El _code es interno, NUNCA se expone al cliente HTTP.
+  const result = await withTransaction(async (client) => {
     const existing = await client.query(
       'SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1',
       [emailLower]
@@ -120,7 +122,8 @@ async function registerConsumer({ email, password, full_name }) {
     };
   });
 
-  // FUERA de la transacción: envío de email no-bloqueante
+  // 2. FUERA de la transacción: envío de email no-bloqueante.
+  //    Si Resend falla, la cuenta queda creada e indicamos email_sent:false.
   let emailSent = true;
   try {
     await sendVerificationEmail(result.email, result._code);
@@ -132,6 +135,7 @@ async function registerConsumer({ email, password, full_name }) {
     });
   }
 
+  // 3. Response final — shape limpio sin _code ni _debug_code.
   return {
     user_id: result.user_id,
     email: result.email,
@@ -141,7 +145,6 @@ async function registerConsumer({ email, password, full_name }) {
     message: emailSent
       ? 'Cuenta creada. Revisa tu correo para verificar.'
       : 'Cuenta creada. No pudimos enviar el correo de verificación; puedes solicitarlo de nuevo desde la pantalla de inicio de sesión.',
-    _debug_code: process.env.NODE_ENV === 'test' ? result._code : undefined,
   };
 }
 
