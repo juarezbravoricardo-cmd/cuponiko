@@ -21,7 +21,7 @@
 const { query, withTransaction } = require('../config/db');
 const { AppError } = require('../utils/AppError');
 const { sha256, generateNumericCode } = require('../utils/hash');
-const { sendEmail } = require('./email');
+const { sendAccountDeletionEmail } = require('./email');
 
 const ACTIVE_SUB_STATUSES = new Set(['active', 'trialing', 'past_due']);
 
@@ -71,12 +71,17 @@ async function requestAccountDeletion(userId, { reason } = {}) {
     [userId, user.email, codeHash]
   );
 
-  // 4. Email con código
-  await sendEmail(
-    user.email,
-    'Confirma la eliminación de tu cuenta de Cuponiko',
-    `Recibimos una solicitud para eliminar tu cuenta.\n\nTu código de confirmación es: ${code}\n\nEste código expira en 30 minutos.\n\nIMPORTANTE: la eliminación es permanente. Si no fuiste tú, ignora este correo.`
-  );
+  // 4. Email con código (envío defensivo: no propaga error)
+  let emailSent = true;
+  try {
+    await sendAccountDeletionEmail(user.email, code);
+  } catch (err) {
+    emailSent = false;
+    console.error('[requestAccountDeletion] email_send_failed_non_blocking', {
+      user_id: userId,
+      error: err?.message,
+    });
+  }
 
   // 5. activity_log
   await query(
