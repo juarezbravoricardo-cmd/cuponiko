@@ -116,14 +116,14 @@ async function registerConsumer({ email, password, full_name }) {
       email: user.email,
       role: user.role,
       email_verified: user.email_verified,
-      emailCode: code,
+      _code: code,
     };
   });
 
   // FUERA de la transacción: envío de email no-bloqueante
   let emailSent = true;
   try {
-    await sendVerificationEmail(result.email, result.emailCode);
+    await sendVerificationEmail(result.email, result._code);
   } catch (err) {
     emailSent = false;
     console.error('[registerConsumer] email_send_failed_non_blocking', {
@@ -141,7 +141,7 @@ async function registerConsumer({ email, password, full_name }) {
     message: emailSent
       ? 'Cuenta creada. Revisa tu correo para verificar.'
       : 'Cuenta creada. No pudimos enviar el correo de verificación; puedes solicitarlo de nuevo desde la pantalla de inicio de sesión.',
-    _debug_code: process.env.NODE_ENV === 'test' ? result.emailCode : undefined,
+    _debug_code: process.env.NODE_ENV === 'test' ? result._code : undefined,
   };
 }
 
