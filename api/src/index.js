@@ -1,5 +1,8 @@
 'use strict';
 
+// Sentry: DEBE inicializarse antes que cualquier otro require (express, pg).
+require('./instrument');
+
 const env = require('./config/env');
 const { buildApp } = require('./app');
 const logger = require('./utils/logger');

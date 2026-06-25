@@ -2,6 +2,7 @@
 
 const { AppError } = require('../utils/AppError');
 const logger = require('../utils/logger');
+const Sentry = require('@sentry/node');
 
 /**
  * Handler global de errores.
@@ -36,6 +37,11 @@ function errorHandler(err, req, res, _next) {
       code: 'VALIDATION_ERROR',
     });
   }
+
+  // Reportar a Sentry SOLO los errores no controlados (500 reales = bugs).
+  // AppError (4xx), Joi (400) y constraints de pg (400) ya retornaron arriba,
+  // así que NO llegan aquí: cero ruido de validación.
+  Sentry.captureException(err);
 
   logger.error('unhandled_error', {
     message: err?.message,

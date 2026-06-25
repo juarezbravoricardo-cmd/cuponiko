@@ -52,6 +52,8 @@ const env = Object.freeze({
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   RESEND_FROM: process.env.RESEND_FROM || 'Cuponiko <no-reply@cuponiko.com>',
 
+  SENTRY_DSN: process.env.SENTRY_DSN || null,
+
   RATE_LIMIT_GLOBAL_PER_MIN: parseInt(process.env.RATE_LIMIT_GLOBAL_PER_MIN || '100', 10),
   RATE_LIMIT_BUSINESS_REGISTER_PER_DAY: parseInt(
     process.env.RATE_LIMIT_BUSINESS_REGISTER_PER_DAY || '3', 10
