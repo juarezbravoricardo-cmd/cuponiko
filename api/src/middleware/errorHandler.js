@@ -38,6 +38,19 @@ function errorHandler(err, req, res, _next) {
     });
   }
 
+  // Errores de body-parser / http-errors (JSON malformado, payload muy grande,
+  // charset no soportado): traen status 4xx + expose=true. Son errores del
+  // CLIENTE, no bugs del servidor. Se responden con su status real y NO se
+  // reportan a Sentry (evita ruido de bots/scanners con requests malformados).
+  const clientStatus = err && (err.status || err.statusCode);
+  if (err && err.expose === true && clientStatus >= 400 && clientStatus < 500) {
+    const message =
+      clientStatus === 413
+        ? 'El cuerpo de la solicitud es demasiado grande.'
+        : 'Solicitud inválida o mal formada.';
+    return res.status(clientStatus).json({ error: message, code: 'BAD_REQUEST' });
+  }
+
   // Reportar a Sentry SOLO los errores no controlados (500 reales = bugs).
   // AppError (4xx), Joi (400) y constraints de pg (400) ya retornaron arriba,
   // así que NO llegan aquí: cero ruido de validación.
